@@ -1,45 +1,61 @@
 import { useState } from "react";
-
+import RegisterService from "../../../services/register/registerService";
+import { useNavigate } from "react-router-dom";
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [errors, setErrors] = useState({});
+  const [username, setUserName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [password, setPassWord] = useState("");
+  const [passwordHash, setPassWord] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   // hàm validate
   const validate = () => {
     const newErrors = {};
 
+    // USERNAME
+    if (!username.trim()) {
+      newErrors.username = "Username is required";
+    } else if (!/^[a-zA-Z0-9_]{4,20}$/.test(username)) {
+      newErrors.username =
+        "Username must be 4–20 chars, letters, numbers, underscore only";
+    }
+
+    // FULL NAME
     if (!fullName.trim()) {
       newErrors.fullName = "Full name is required";
     } else if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(fullName)) {
       newErrors.fullName = "Full name is invalid";
     }
 
+    // EMAIL
     if (!email) {
       newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = "Email is invalid";
     }
 
+    // PHONE
     if (!phoneNumber) {
       newErrors.phoneNumber = "Phone number is required";
     } else if (!/^0\d{9,10}$/.test(phoneNumber)) {
       newErrors.phoneNumber = "Phone number is invalid";
     }
 
-    if (!password) {
+    // PASSWORD
+    if (!passwordHash) {
       newErrors.password = "Password is required";
-    } else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password)) {
+    } else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(passwordHash)) {
       newErrors.password =
         "Password must be at least 8 chars and contain letters & numbers";
     }
 
+    // CONFIRM PASSWORD
     if (!confirmPassword) {
       newErrors.confirmPassword = "Confirm password is required";
-    } else if (confirmPassword !== password) {
+    } else if (confirmPassword !== passwordHash) {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
@@ -47,18 +63,48 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // hàm submit
-  const handleSubmit = (e) => {
+  // submit
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
 
-    if (validate()) {
-      console.log("OK:", {
+    if (!validate()) return;
+
+    try {
+      await RegisterService.register({
+        userName: username,
         fullName,
         email,
-        phoneNumber,
-        password,
+        phone: phoneNumber,
+        passwordHash,
       });
-      // TODO: gọi API register
+
+      alert("Register success!");
+      navigate("/login");
+    } catch (err) {
+      if (err.response?.status === 409) {
+        const message = err.response.data;
+
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+
+          if (message.includes("Email")) {
+            newErrors.email = message;
+          }
+
+          if (message.includes("Username")) {
+            newErrors.username = message;
+          }
+
+          if (message.includes("Phone")) {
+            newErrors.phoneNumber = message;
+          }
+
+          return newErrors;
+        });
+      } else {
+        alert("Server error");
+      }
     }
   };
 
@@ -85,21 +131,27 @@ export default function RegisterPage() {
               </div>
               <h2 className="text-xl font-bold">E-Wallet</h2>
             </div>
-            <a href="#" className="text-sm text-gray-500 hover:text-primary">
-              Back to Home
-            </a>
           </div>
 
           {/* Header */}
           <div className="space-y-2">
             <h1 className="text-4xl font-black">Create your account</h1>
-            <p className="text-gray-500">
-              Join over 2 million users transacting securely.
-            </p>
           </div>
 
           {/* Form */}
           <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <input
+                type="text"
+                placeholder="User Name"
+                className={inputClass("username")}
+                value={username}
+                onChange={(e) => setUserName(e.target.value)}
+              />
+              {errors.username && (
+                <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+              )}
+            </div>
             <div>
               <input
                 type="text"
@@ -147,7 +199,7 @@ export default function RegisterPage() {
                   type="password"
                   placeholder="Password"
                   className={inputClass("password")}
-                  value={password}
+                  value={passwordHash}
                   onChange={(e) => setPassWord(e.target.value)}
                 />
                 {errors.password && (
@@ -181,7 +233,7 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-gray-500">
             Already have an account?{" "}
-            <a href="#" className="font-bold hover:text-primary">
+            <a href="/Login" className="font-bold hover:text-primary">
               Log in
             </a>
           </p>
