@@ -72,7 +72,7 @@ export default function RegisterPage() {
 
     try {
       await RegisterService.register({
-        userName: username,
+        username,
         fullName,
         email,
         phone: phoneNumber,
