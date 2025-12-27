@@ -1,22 +1,63 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function LoginPage() {
     const [formData, setFormData] = useState({
-        email: "",
+        username: "",
         password: "",
     });
+    const [showPassword, setShowPassword] = useState(false);
+    const [localError, setLocalError] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const { login, error: authError } = useAuth();
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
         });
+        setLocalError(""); // Clear error khi user nhập
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log(formData); // sau này nối API
+        setLocalError("");
+
+        // Validation
+        if (!formData.username.trim()) {
+            setLocalError("Vui lòng nhập username");
+            return;
+        }
+        if (!formData.password.trim()) {
+            setLocalError("Vui lòng nhập password");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            const result = await login({
+                username: formData.username,
+                password: formData.password,
+            });
+
+            if (result.success) {
+                // Redirect đến dashboard sau khi login thành công
+                navigate("/dashboard");
+            } else {
+                setLocalError(result.error?.message || "Đăng nhập thất bại");
+            }
+        } catch (err) {
+            setLocalError("Đã xảy ra lỗi. Vui lòng thử lại.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
+
+    const displayError = localError || authError;
 
     return (
         <div className="relative flex h-screen w-full overflow-hidden bg-background-light dark:bg-background-dark font-display antialiased text-text-main">
@@ -49,22 +90,33 @@ export default function LoginPage() {
                             </p>
                         </div>
 
+                        {/* Error Message */}
+                        {displayError && (
+                            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                <div className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-red-500 text-xl">error</span>
+                                    <p className="text-sm text-red-600 dark:text-red-400">{displayError}</p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
-                            {/* Email */}
+                            {/* Username */}
                             <div>
-                                <label className="text-sm font-medium">Email or Phone Number</label>
+                                <label className="text-sm font-medium">Username</label>
                                 <div className="relative mt-1">
                                     <input
-                                        name="email"
-                                        value={formData.email}
+                                        name="username"
+                                        value={formData.username}
                                         onChange={handleChange}
-                                        placeholder="Enter your email or phone number"
-                                        className="form-input w-full h-14 rounded-xl px-4 border border-border-color dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary/50"
+                                        placeholder="Enter your username"
+                                        disabled={isSubmitting}
+                                        className="form-input w-full h-14 rounded-xl px-4 pr-12 border border-border-color dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary">
-                                        mail
+                                        person
                                     </span>
                                 </div>
                             </div>
@@ -74,15 +126,19 @@ export default function LoginPage() {
                                 <label className="text-sm font-medium">Password</label>
                                 <div className="relative mt-1">
                                     <input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         name="password"
                                         value={formData.password}
                                         onChange={handleChange}
                                         placeholder="Enter your password"
-                                        className="form-input w-full h-14 rounded-xl px-4 border border-border-color dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary/50"
+                                        disabled={isSubmitting}
+                                        className="form-input w-full h-14 rounded-xl px-4 pr-12 border border-border-color dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
-                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary cursor-pointer">
-                                        visibility_off
+                                    <span
+                                        className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary cursor-pointer hover:text-primary transition-colors"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        {showPassword ? "visibility" : "visibility_off"}
                                     </span>
                                 </div>
                             </div>
@@ -95,8 +151,19 @@ export default function LoginPage() {
                             </div>
 
                             {/* Submit */}
-                            <button className="h-12 rounded-full bg-primary font-bold shadow-lg shadow-primary/20">
-                                Log In
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="h-12 rounded-full bg-primary font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                        Logging in...
+                                    </>
+                                ) : (
+                                    "Log In"
+                                )}
                             </button>
 
                             {/* Divider */}
@@ -108,11 +175,11 @@ export default function LoginPage() {
 
                             {/* Social */}
                             <div className="flex gap-4">
-                                <button type="button" className="flex-1 h-12 border rounded-xl flex items-center justify-center gap-2">
+                                <button type="button" className="flex-1 h-12 border rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                                     <span className="material-symbols-outlined">account_circle</span>
                                     Google
                                 </button>
-                                <button type="button" className="flex-1 h-12 border rounded-xl flex items-center justify-center gap-2">
+                                <button type="button" className="flex-1 h-12 border rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                                     <span className="material-symbols-outlined">favorite</span>
                                     Apple
                                 </button>
@@ -122,8 +189,8 @@ export default function LoginPage() {
 
                         {/* Signup */}
                         <p className="text-center text-sm text-text-secondary">
-                            Don’t have an account?
-                            <a href="#" className="ml-1 text-primary font-bold">Sign up</a>
+                            Don't have an account?
+                            <Link to="/register" className="ml-1 text-primary font-bold">Sign up</Link>
                         </p>
 
                     </div>
