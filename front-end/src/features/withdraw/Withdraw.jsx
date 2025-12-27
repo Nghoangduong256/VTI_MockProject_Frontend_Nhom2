@@ -1,8 +1,89 @@
+import { useEffect, useState } from "react";
+import { formatVND, formatDateRangeFromNow } from "./utils";
+
 // WithdrawPage.jsx
 export default function Withdraw() {
   const profileImageUrl =
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuA635xw_wV_WH17wTeYV52OX0PrpPGeE4wnBFdf0-HxVILVOR9YvK1EjEt5Zny0XgxY7mZz4jxWtnhueAKL_uZEzlQURhlZbSTcjMy2W41qb5ofVleNRMHWGNbWue2vM6mwM5iTiVPb8uHngCOs4wmVPYuelfBnBJ_3QXRDR9ysbgbG2onE1zWE12uO72mVQ2pxgC9Hk2BUkIGrhsh6V1VZacxU7cZzPMtfqNXCeg-Dig9xIjcLE2hDwybUfhLukkvUHbWrmvyhHRTF';
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuA635xw_wV_WH17wTeYV52OX0PrpPGeE4wnBFdf0-HxVILVOR9YvK1EjEt5Zny0XgxY7mZz4jxWtnhueAKL_uZEzlQURhlZbSTcjMy2W41qb5ofVleNRMHWGNbWue2vM6mwM5iTiVPb8uHngCOs4wmVPYuelfBnBJ_3QXRDR9ysbgbG2onE1zWE12uO72mVQ2pxgC9Hk2BUkIGrhsh6V1VZacxU7cZzPMtfqNXCeg-Dig9xIjcLE2hDwybUfhLukkvUHbWrmvyhHRTF";
 
+  const token =
+    "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTc2Njc1ODgyNCwiZXhwIjoxNzY4MDU0ODI0fQ.jcTltrYLxm3WKGFxe91Vpvz1lftH2eAGGT4hUGoO3ms";
+  const [bankAccounts, setBankAccounts] = useState(null);
+  const [user, setUser] = useState(null);
+  const [withdrawAmount, setWithdrawAmount] = useState(100000);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  useEffect(() => {
+    fetch("http://localhost:8080/api/me", {
+      method: "GET", // hoặc POST, PUT, DELETE
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+        setUser(data);
+      });
+    fetch("http://localhost:8080/api/bank-account?userId=1", {
+      method: "GET", // hoặc POST, PUT, DELETE
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Bank account data:", data);
+        setBankAccounts(data);
+      });
+  }, []);
+  function handleWithdrawAmountChange(e) {
+    if (e.target.value < 0 || e.target.value > user?.wallet.availableBalance)
+      return;
+
+    setWithdrawAmount(e.target.value);
+  }
+  function confirmWithdraw() {
+    if (!selectedAccount) {
+      alert("Please select a bank account to withdraw to.");
+      return;
+    }
+    // alert(`Withdrawing ${formatVND(withdrawAmount)} to account ID ${selectedAccount}`);
+    fetch(`http://localhost:8080/api/wallets/${user.wallet.id}/withdraw`, {
+      method: "POST", // hoặc POST, PUT, DELETE
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        bankAccountId: selectedAccount,
+        amount: withdrawAmount,
+        note: "Withdraw via E-Wallet app",
+      }),
+    })
+      .then((response) => {
+        if (response.ok) {
+          alert("Withdraw successful!");
+          // Optionally, refresh user data to update balance
+          return response.json();
+        } else {
+          alert("Withdraw failed. Please try again.");
+        }
+      })
+      .then((data) => {
+        console.log("Withdraw response data:", data);
+        setUser((prevUser) => ({
+          ...prevUser,
+          wallet: {
+            ...prevUser.wallet,
+            availableBalance: data.availableBalanceAfter,
+          },
+        }));
+        setWithdrawAmount(0);
+      });
+  }
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden">
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-10 py-4 sticky top-0 z-50">
@@ -56,9 +137,9 @@ export default function Withdraw() {
 
         <div className="flex items-center gap-6">
           <div className="hidden md:flex flex-col items-end">
-            <span className="text-sm font-bold">John Doe</span>
+            <span className="text-sm font-bold">{user?.fullName}</span>
             <span className="text-xs text-text-sub-light dark:text-text-sub-dark">
-              Wallet ID: 8832...992
+              Wallet ID: {user?.wallet.code}
             </span>
           </div>
 
@@ -110,65 +191,50 @@ export default function Withdraw() {
                 </label>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="cursor-pointer relative">
-                    <input
-                      defaultChecked
-                      className="peer sr-only"
-                      name="account"
-                      type="radio"
-                    />
-                    <div className="p-4 rounded-lg border-2 border-primary bg-primary/5 dark:bg-primary/10 flex items-center gap-4 transition-all peer-checked:border-primary peer-checked:bg-primary/5 dark:peer-checked:bg-primary/10 hover:bg-background-light dark:hover:bg-surface-dark border-border-light dark:border-border-dark">
-                      <div className="size-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-600">
-                        <span className="material-symbols-outlined">
-                          account_balance
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm">Chase Bank</span>
-                        <span className="text-xs text-text-sub-light dark:text-text-sub-dark">
-                          Checking •••• 4582
-                        </span>
-                      </div>
-                      <div className="ml-auto text-primary">
-                        <span className="material-symbols-outlined fill-current">
-                          check_circle
-                        </span>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="cursor-pointer relative">
-                    <input
-                      className="peer sr-only"
-                      name="account"
-                      type="radio"
-                    />
-                    <div className="p-4 rounded-lg border border-border-light dark:border-border-dark flex items-center gap-4 transition-all hover:bg-background-light dark:hover:bg-background-dark peer-checked:border-primary peer-checked:bg-primary/5 dark:peer-checked:bg-primary/10">
-                      <div className="size-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-800">
-                        <span className="material-symbols-outlined">
-                          payments
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm">PayPal</span>
-                        <span className="text-xs text-text-sub-light dark:text-text-sub-dark">
-                          john.doe@example.com
-                        </span>
-                      </div>
-                      <div className="ml-auto text-primary opacity-0 peer-checked:opacity-100">
-                        <span className="material-symbols-outlined fill-current">
-                          check_circle
-                        </span>
-                      </div>
-                    </div>
-                  </label>
+                  {bankAccounts &&
+                    bankAccounts.map((account) => (
+                      <label
+                        className="cursor-pointer relative"
+                        key={account.id}
+                        onClick={() => setSelectedAccount(account.id)}
+                      >
+                        <input
+                          className="peer sr-only"
+                          name="account"
+                          type="radio"
+                        />
+                        <div className="p-4 rounded-lg border border-border-light dark:border-border-dark flex items-center gap-4 transition-all hover:bg-background-light dark:hover:bg-background-dark peer-checked:border-primary peer-checked:bg-primary/5 dark:peer-checked:bg-primary/10">
+                          <div className="size-10 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-800">
+                            <span className="material-symbols-outlined">
+                              payments
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-sm">
+                              {account.bankName}
+                            </span>
+                            {/* <span className="font-bold text-sm">{account.accountName}</span> */}
+                            <span className="text-xs text-text-sub-light dark:text-text-sub-dark">
+                              {account.accountNumber}
+                            </span>
+                          </div>
+                          <div className="ml-auto text-primary opacity-0 peer-checked:opacity-100">
+                            <span className="material-symbols-outlined fill-current">
+                              check_circle
+                            </span>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
 
                   <button
                     type="button"
                     className="flex items-center justify-center gap-2 p-4 rounded-lg border border-dashed border-border-light dark:border-border-dark text-text-sub-light dark:text-text-sub-dark hover:text-primary hover:border-primary transition-colors"
                   >
                     <span className="material-symbols-outlined">add</span>
-                    <span className="text-sm font-medium">Link New Account</span>
+                    <span className="text-sm font-medium">
+                      Link New Account
+                    </span>
                   </button>
                 </div>
               </div>
@@ -182,9 +248,9 @@ export default function Withdraw() {
                     Amount
                   </label>
                   <span className="text-xs font-medium text-text-sub-light dark:text-text-sub-dark">
-                    Available Balance:{' '}
+                    Available Balance:
                     <span className="text-text-main-light dark:text-text-main-dark font-bold">
-                      $12,450.00
+                      {formatVND(user?.wallet.availableBalance)}
                     </span>
                   </span>
                 </div>
@@ -192,7 +258,7 @@ export default function Withdraw() {
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <span className="text-text-sub-light dark:text-text-sub-dark font-bold text-lg">
-                      $
+                      ₫
                     </span>
                   </div>
 
@@ -200,7 +266,9 @@ export default function Withdraw() {
                     className="form-input block w-full pl-10 pr-4 py-4 rounded-lg bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark text-text-main-light dark:text-text-main-dark placeholder:text-text-sub-light/50 focus:border-primary focus:ring-primary text-3xl font-bold tracking-tight"
                     placeholder="0.00"
                     type="number"
-                    defaultValue={500.0}
+                    value={withdrawAmount}
+                    onChange={handleWithdrawAmountChange}
+                    defaultValue={10000.0}
                   />
                 </div>
 
@@ -209,28 +277,48 @@ export default function Withdraw() {
                     className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark hover:bg-background-light dark:hover:bg-background-dark px-4 transition-colors"
                     type="button"
                   >
-                    <p className="text-sm font-medium leading-normal">$50</p>
-                  </button>
-
-                  <button
-                    className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-primary bg-primary/10 px-4 transition-colors text-primary font-bold"
-                    type="button"
-                  >
-                    <p className="text-sm leading-normal">$500</p>
+                    <p
+                      className="text-sm font-medium leading-normal"
+                      onClick={(e) => setWithdrawAmount(50000)}
+                    >
+                      50.000 ₫
+                    </p>
                   </button>
 
                   <button
                     className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark hover:bg-background-light dark:hover:bg-background-dark px-4 transition-colors"
                     type="button"
                   >
-                    <p className="text-sm font-medium leading-normal">$1,000</p>
+                    <p
+                      className="text-sm leading-normal"
+                      onClick={(e) => setWithdrawAmount(500000)}
+                    >
+                      500.000 ₫
+                    </p>
+                  </button>
+
+                  <button
+                    className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark hover:bg-background-light dark:hover:bg-background-dark px-4 transition-colors"
+                    type="button"
+                  >
+                    <p
+                      className="text-sm font-medium leading-normal"
+                      onClick={(e) => setWithdrawAmount(1000000)}
+                    >
+                      1.000.000 ₫
+                    </p>
                   </button>
 
                   <button
                     className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark hover:bg-background-light dark:hover:bg-background-dark px-4 transition-colors ml-auto"
                     type="button"
                   >
-                    <p className="text-sm font-bold leading-normal text-text-sub-light dark:text-text-sub-dark">
+                    <p
+                      className="text-sm font-bold leading-normal text-text-sub-light dark:text-text-sub-dark"
+                      onClick={(e) =>
+                        setWithdrawAmount(user.wallet.availableBalance)
+                      }
+                    >
                       Max
                     </p>
                   </button>
@@ -264,14 +352,18 @@ export default function Withdraw() {
                   <span className="text-text-sub-light dark:text-text-sub-dark">
                     Withdraw Amount
                   </span>
-                  <span className="font-medium">$500.00</span>
+                  <span className="font-medium">
+                    {formatVND(withdrawAmount)}
+                  </span>
                 </div>
 
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-text-sub-light dark:text-text-sub-dark">
                     Service Fee (0.5%)
                   </span>
-                  <span className="font-medium text-red-500">-$2.50</span>
+                  <span className="font-medium text-red-500">
+                    -{formatVND(withdrawAmount * 0.005)}
+                  </span>
                 </div>
 
                 <div className="my-2 border-t border-border-light dark:border-border-dark border-dashed" />
@@ -279,13 +371,13 @@ export default function Withdraw() {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-base">Total Deducted</span>
                   <span className="font-extrabold text-xl text-text-main-light dark:text-text-main-dark">
-                    $502.50
+                    {formatVND(withdrawAmount * 1.005)}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs text-text-sub-light dark:text-text-sub-dark mt-1">
                   <span>Est. Arrival</span>
-                  <span>Oct 26 - Oct 28</span>
+                  <span>{formatDateRangeFromNow()}</span>
                 </div>
               </div>
 
@@ -294,7 +386,9 @@ export default function Withdraw() {
                   type="button"
                   className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary hover:bg-primary/90 transition-colors text-[#111714] text-base font-bold leading-normal tracking-[0.015em] shadow-lg shadow-primary/20"
                 >
-                  <span className="truncate">Confirm Withdraw</span>
+                  <span className="truncate" onClick={confirmWithdraw}>
+                    Confirm Withdraw
+                  </span>
                 </button>
 
                 <div className="flex justify-center items-center gap-2 mt-4 text-xs text-text-sub-light dark:text-text-sub-dark">
@@ -316,7 +410,10 @@ export default function Withdraw() {
                   If you have any issues with your withdrawal, please contact
                   our support team.
                 </p>
-                <a className="text-primary text-xs font-bold hover:underline" href="#">
+                <a
+                  className="text-primary text-xs font-bold hover:underline"
+                  href="#"
+                >
                   Contact Support
                 </a>
               </div>
