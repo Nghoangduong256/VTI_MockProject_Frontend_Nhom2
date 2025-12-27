@@ -17,9 +17,9 @@ export default function RegisterPage() {
 
     // USERNAME
     if (!username.trim()) {
-      newErrors.username = "Username is required";
+      newErrors.userName = "Username is required";
     } else if (!/^[a-zA-Z0-9_]{4,20}$/.test(username)) {
-      newErrors.username =
+      newErrors.userName =
         "Username must be 4–20 chars, letters, numbers, underscore only";
     }
 
@@ -72,7 +72,7 @@ export default function RegisterPage() {
 
     try {
       await RegisterService.register({
-        username,
+        userName: username,
         fullName,
         email,
         phone: phoneNumber,
@@ -93,7 +93,7 @@ export default function RegisterPage() {
           }
 
           if (message.includes("Username")) {
-            newErrors.username = message;
+            newErrors.userName = message;
           }
 
           if (message.includes("Phone")) {
@@ -109,8 +109,7 @@ export default function RegisterPage() {
   };
 
   const inputClass = (field) =>
-    `w-full px-4 py-3 rounded-full border outline-none transition ${
-      errors[field] ? "border-red-500" : "border-gray-300"
+    `w-full px-4 py-3 rounded-full border outline-none transition ${errors[field] ? "border-red-500" : "border-gray-300"
     }`;
 
   return (
@@ -144,12 +143,12 @@ export default function RegisterPage() {
               <input
                 type="text"
                 placeholder="User Name"
-                className={inputClass("username")}
+                className={inputClass("userName")}
                 value={username}
                 onChange={(e) => setUserName(e.target.value)}
               />
-              {errors.username && (
-                <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+              {errors.userName && (
+                <p className="text-red-500 text-sm mt-1">{errors.userName}</p>
               )}
             </div>
             <div>
