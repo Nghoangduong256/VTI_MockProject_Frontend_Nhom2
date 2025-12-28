@@ -204,10 +204,13 @@ export default function DashboardPage() {
                                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>grid_view</span>
                                 <span className="text-sm font-medium">Dashboard</span>
                             </a>
-                            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
+                            <button
+                                onClick={() => navigate('/deposit')}
+                                className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors w-full text-left"
+                            >
                                 <span className="material-symbols-outlined">account_balance_wallet</span>
                                 <span className="text-sm font-medium">My Wallet</span>
-                            </a>
+                            </button>
                             <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
                                 <span className="material-symbols-outlined">swap_horiz</span>
                                 <span className="text-sm font-medium">Transactions</span>
