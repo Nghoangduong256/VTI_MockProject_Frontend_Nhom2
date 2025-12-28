@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "../features/auth/pages/LoginPage";
 import RegisterPage from "../features/auth/pages/RegisterPage";
+import ProfilePage from "../features/auth/pages/ProfilePage";
+import SpendingSummaryPage from "../features/auth/pages/SpendingSummaryPage";
 import DashboardPage from "../features/auth/pages/DashboardPage";
 import DepositPage from "../features/auth/pages/DepositPage";
 import Withdraw from "../features/withdraw/Withdraw";
@@ -36,6 +38,9 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/reigister" element={<RegisterPage />} />
+      <Route path="/profiles" element={<ProfilePage />} />
+      <Route path="/spending-summary" element={<SpendingSummaryPage />} />
     </Routes>
   );
 }
