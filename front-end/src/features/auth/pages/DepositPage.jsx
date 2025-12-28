@@ -1,8 +1,10 @@
 import { React, useEffect } from "react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DepositService from "../../../services/deposit/depositService";
 
 const DepositPage = () => {
+  const navigate = useNavigate();
   const [error, setError] = useState("");
   const [recentDeposits, setRecentDeposits] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -91,6 +93,13 @@ const DepositPage = () => {
           {/* LEFT */}
           <section className="flex-1 flex flex-col gap-6">
             <div>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center gap-2 text-[#648772] hover:text-primary transition-colors mb-4"
+              >
+                <span className="material-symbols-outlined">arrow_back</span>
+                <span className="font-medium">Back to Dashboard</span>
+              </button>
               <h1 className="text-4xl font-black">Deposit Funds</h1>
               <p className="text-[#648772]">
                 Select a funding source and enter amount to proceed.
@@ -189,9 +198,9 @@ const DepositPage = () => {
                   $
                   {wallet
                     ? wallet.balance.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
                     : "Loading..."}
                 </strong>
               </div>
@@ -275,13 +284,12 @@ const DepositPage = () => {
                       </span>
 
                       <span
-                        className={`text-xs font-medium ${
-                          tx.status === "COMPLETED"
+                        className={`text-xs font-medium ${tx.status === "COMPLETED"
                             ? "text-green-600"
                             : tx.status === "PENDING"
-                            ? "text-yellow-500"
-                            : "text-red-500"
-                        }`}
+                              ? "text-yellow-500"
+                              : "text-red-500"
+                          }`}
                       >
                         {tx.status}
                       </span>
