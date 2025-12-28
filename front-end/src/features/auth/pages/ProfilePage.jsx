@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
-import { userService } from "../services/userService";
+import { userService } from "../services/profile/userService";
 
 export default function ProfilePage() {
   // mock user

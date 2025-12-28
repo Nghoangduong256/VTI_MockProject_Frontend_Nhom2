@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: "http://localhost:5173/api/v1",
+  baseURL: "http://localhost:8080/api/v1",
 });
 
 instance.interceptors.request.use((config) => {
@@ -15,10 +15,14 @@ instance.interceptors.request.use((config) => {
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      localStorage.clear();
-      window.location.href = "/login";
+    const status = error.response?.status;
+
+    if (status === 401 || status === 403) {
+      // localStorage.clear();
+      // window.location.href = "/login";
+      console.warn("Auth error (dev mode):", status);
     }
+
     return Promise.reject(error);
   }
 );

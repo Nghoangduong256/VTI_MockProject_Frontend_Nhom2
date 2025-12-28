@@ -10,8 +10,8 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reigister" element={<RegisterPage />} />
-      <Route path="/profiles" element={<ProfilePage />}></Route>
-      <Route path="/spending-summary" element={<SpendingSummaryPage />}></Route>
+      <Route path="/profiles" element={<ProfilePage />} />
+      <Route path="/spending-summary" element={<SpendingSummaryPage />} />
     </Routes>
   );
 }
