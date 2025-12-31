@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import Sidebar from "../../../components/Sidebar";
 import userService from "../../../services/userService";
 import walletService from "../../../services/walletService";
 import cardService from "../../../services/cardService";
@@ -181,66 +182,8 @@ export default function DashboardPage() {
             <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
             <div className="flex h-screen w-full">
-                {/* Sidebar - ẩn trên mobile */}
-                <aside className="hidden md:flex flex-col w-72 h-full bg-white dark:bg-[#1a2c22] border-r border-gray-100 dark:border-[#2a3c32] p-6 justify-between">
-                    <div className="flex flex-col gap-8">
-                        {/* User Profile */}
-                        <div className="flex items-center gap-4 px-2">
-                            <div
-                                className="bg-center bg-no-repeat bg-cover rounded-full size-12 shadow-sm"
-                                style={{
-                                    backgroundImage: `url("${profile?.avatarUrl || 'https://via.placeholder.com/150'}")`,
-                                }}
-                            />
-                            <div className="flex flex-col">
-                                <h1 className="text-base font-semibold leading-tight text-text-main dark:text-white">{profile?.fullName || 'User'}</h1>
-                                <p className="text-text-sub dark:text-gray-400 text-sm">{profile?.membership || 'Member'}</p>
-                            </div>
-                        </div>
-
-                        {/* Navigation */}
-                        <nav className="flex flex-col gap-2">
-                            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full bg-primary text-text-main shadow-md shadow-primary/20 transition-all hover:bg-primary/90">
-                                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>grid_view</span>
-                                <span className="text-sm font-medium">Dashboard</span>
-                            </a>
-                            <button
-                                onClick={() => navigate('/deposit')}
-                                className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors w-full text-left"
-                            >
-                                <span className="material-symbols-outlined">account_balance_wallet</span>
-                                <span className="text-sm font-medium">My Wallet</span>
-                            </button>
-                            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
-                                <span className="material-symbols-outlined">swap_horiz</span>
-                                <span className="text-sm font-medium">Transactions</span>
-                            </a>
-                            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
-                                <span className="material-symbols-outlined">bar_chart</span>
-                                <span className="text-sm font-medium">Analytics</span>
-                            </a>
-                            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
-                                <span className="material-symbols-outlined">credit_card</span>
-                                <span className="text-sm font-medium">My Cards</span>
-                            </a>
-                        </nav>
-                    </div>
-
-                    {/* Bottom Section */}
-                    <div className="flex flex-col gap-4">
-                        <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-full text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
-                            <span className="material-symbols-outlined">settings</span>
-                            <span className="text-sm font-medium">Settings</span>
-                        </a>
-                        <div className="bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/10 dark:to-primary/5 rounded-xl p-6 border border-primary/20">
-                            <h3 className="text-sm font-semibold mb-2 text-text-main dark:text-white">Upgrade to Pro</h3>
-                            <p className="text-xs text-text-sub dark:text-gray-400 mb-4">Get unlimited access to all features</p>
-                            <button className="w-full bg-primary text-text-main text-sm font-medium py-2 px-4 rounded-full hover:bg-primary/90 transition-colors">
-                                Upgrade Now
-                            </button>
-                        </div>
-                    </div>
-                </aside>
+                {/* Sidebar */}
+                <Sidebar activeRoute="dashboard" />
 
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col h-full overflow-y-auto bg-background-light dark:bg-background-dark p-4 md:p-8">
@@ -294,6 +237,7 @@ export default function DashboardPage() {
                                     <div>
                                         <p className="text-sm opacity-80 mb-2">Total Balance</p>
                                         <h2 className="text-4xl font-bold">${wallet?.balance?.toLocaleString() || '0.00'}</h2>
+                                        <p className="text-xs opacity-70 mt-2 font-mono">Acc: {user?.phone || user?.username || '@user'}</p>
                                     </div>
                                     <div className="flex flex-col items-end">
                                         <span className="material-symbols-outlined text-3xl mb-1">account_balance</span>
@@ -316,6 +260,10 @@ export default function DashboardPage() {
                                     <button onClick={() => setShowTopupModal(true)} className="flex-1 bg-white/20 hover:bg-white/30 transition-colors backdrop-blur-sm rounded-lg p-4 flex flex-col justify-center items-center gap-1 group">
                                         <span className="material-symbols-outlined group-hover:scale-110 transition-transform">add_card</span>
                                         <span className="text-sm font-semibold">Top Up</span>
+                                    </button>
+                                    <button onClick={() => navigate('/receive-money')} className="flex-1 bg-white/20 hover:bg-white/30 transition-colors backdrop-blur-sm rounded-lg p-4 flex flex-col justify-center items-center gap-1 group">
+                                        <span className="material-symbols-outlined group-hover:scale-110 transition-transform">qr_code_scanner</span>
+                                        <span className="text-sm font-semibold">Receive</span>
                                     </button>
                                 </div>
                             </div>

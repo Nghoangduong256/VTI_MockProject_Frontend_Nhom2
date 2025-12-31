@@ -47,11 +47,13 @@ apiClient.interceptors.response.use(
         return response;
     },
     (error) => {
-        console.error('❌ API Error:', {
+        console.error('❌ API Error Full:', {
             url: error.config?.url,
             message: error.message,
-            response: error.response?.data,
+            responseData: error.response?.data,
+            responseText: error.response?.request?.responseText,
             status: error.response?.status,
+            headers: error.config?.headers,
         });
 
         // Nếu token hết hạn hoặc không hợp lệ (401)

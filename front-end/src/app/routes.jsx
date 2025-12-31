@@ -6,6 +6,7 @@ import SpendingSummaryPage from "../features/auth/pages/SpendingSummaryPage";
 import DashboardPage from "../features/auth/pages/DashboardPage";
 import DepositPage from "../features/auth/pages/DepositPage";
 import Withdraw from "../features/withdraw/Withdraw";
+import ReceiveMoneyPage from "../features/auth/pages/ReceiveMoneyPage";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
 
 function AppRoutes() {
@@ -41,6 +42,14 @@ function AppRoutes() {
       <Route path="/reigister" element={<RegisterPage />} />
       <Route path="/profiles" element={<ProfilePage />} />
       <Route path="/spending-summary" element={<SpendingSummaryPage />} />
+      <Route
+        path="/receive-money"
+        element={
+          <ProtectedRoute>
+            <ReceiveMoneyPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }
