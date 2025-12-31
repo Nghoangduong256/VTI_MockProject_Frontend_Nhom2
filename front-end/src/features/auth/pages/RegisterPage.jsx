@@ -71,7 +71,7 @@ export default function RegisterPage() {
     if (!validate()) return;
 
     try {
-      await RegisterService.register({
+      const response = await RegisterService.register({
         userName: username,
         fullName,
         email,
@@ -79,7 +79,8 @@ export default function RegisterPage() {
         passwordHash,
       });
 
-      alert("Register success!");
+      const { accountNumber } = response.data;
+      alert(`Register success! Your account number is: ${accountNumber || phoneNumber}`);
       navigate("/login");
     } catch (err) {
       if (err.response?.status === 409) {
