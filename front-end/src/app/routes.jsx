@@ -4,6 +4,7 @@ import RegisterPage from "../features/auth/pages/RegisterPage";
 import DashboardPage from "../features/auth/pages/DashboardPage";
 import DepositPage from "../features/auth/pages/DepositPage";
 import Withdraw from "../features/withdraw/Withdraw";
+import ReceiveMoneyPage from "../features/auth/pages/ReceiveMoneyPage";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
 
 function AppRoutes() {
@@ -33,6 +34,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Withdraw />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/receive-money"
+        element={
+          <ProtectedRoute>
+            <ReceiveMoneyPage />
           </ProtectedRoute>
         }
       />

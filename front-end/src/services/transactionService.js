@@ -32,7 +32,18 @@ const transactionService = {
     deposit: async (data) => {
         const response = await apiClient.post('/api/transactions', data);
         return response.data;
+    },
+
+    /**
+     * Get incoming transactions
+     * Endpoint: GET /api/transactions/incoming?limit={limit}
+     * @param {number} limit - Number of transactions to fetch
+     */
+    getIncomingTransactions: async (limit = 5) => {
+        const response = await apiClient.get(`/api/transactions/incoming?limit=${limit}`);
+        return response.data;
     }
 };
 
 export default transactionService;
+

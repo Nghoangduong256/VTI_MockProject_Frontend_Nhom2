@@ -20,10 +20,9 @@ const authService = {
 
             // Lưu token và thông tin user vào localStorage
             if (response.data.token) {
-                // Decode token để kiểm tra role
-                const decodedToken = authService.parseJwt(response.data.token);
-
-                if (decodedToken && decodedToken.role !== 'USER') {
+                // Kiểm tra role trực tiếp từ response
+                const roles = response.data.roles || [];
+                if (roles.length > 0 && !roles.includes('USER')) {
                     throw {
                         response: {
                             data: {
@@ -38,22 +37,18 @@ const authService = {
 
                 // Lưu thêm expiresIn nếu có
                 if (response.data.expiresIn) {
-                    const expiresAt = Date.now() + response.data.expiresIn * 1000;
+                    const expiresAt = Date.now() + response.data.expiresIn; // expiresIn is already in ms (86400000)
                     localStorage.setItem('tokenExpiresAt', expiresAt);
                 }
 
-                // Lưu user info
-                // Ưu tiên lấy từ decoded token
-                if (decodedToken) {
-                    const user = {
-                        username: decodedToken.username || 'User',
-                        role: decodedToken.role,
-                        id: decodedToken.sub
-                    };
-                    localStorage.setItem('user', JSON.stringify(user));
-                } else if (response.data.user) {
-                    localStorage.setItem('user', JSON.stringify(response.data.user));
-                }
+                // Lưu user info trực tiếp từ response
+                const user = {
+                    username: response.data.userName || 'User',
+                    email: response.data.email,
+                    fullName: response.data.fullName,
+                    roles: roles
+                };
+                localStorage.setItem('user', JSON.stringify(user));
             }
 
             return response.data;
