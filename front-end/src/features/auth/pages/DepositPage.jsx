@@ -2,23 +2,25 @@ import { React, useEffect } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DepositService from "../../../services/deposit/depositService";
-
+import { useAuth } from "../context/AuthContext";
 const DepositPage = () => {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [recentDeposits, setRecentDeposits] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
-
+  const { user } = useAuth();
+  const userName = user?.username;
   const [amount, setAmount] = useState("");
   // chỗ này set id Wallert khi chọn ví r mới vào trang này
-  const [walletId, setWalletId] = useState(1);
+  const [walletId, setWalletId] = useState(null);
 
   const [wallet, setWallet] = useState(null);
 
   // call ví
   const fetchWallet = async () => {
     try {
-      const res = await DepositService.getWalletById(walletId);
+      const res = await DepositService.getWalletByUserName(userName);
+      setWalletId(res.data.walletId);
       setWallet(res.data);
     } catch (e) {
       console.error("Lỗi load wallet", e);
@@ -38,10 +40,16 @@ const DepositPage = () => {
   };
 
   useEffect(() => {
-    if (!walletId) return;
-
+    if (!userName) return;
     fetchWallet();
-    fetchHistory();
+  }, [userName]);
+
+  /* =======================
+     4️⃣ LOAD HISTORY KHI CÓ WALLET ID
+     ======================= */
+  useEffect(() => {
+    if (!walletId) return;
+    fetchHistory(walletId);
   }, [walletId]);
 
   const amountNumber = Number(amount) || 0;
@@ -68,7 +76,7 @@ const DepositPage = () => {
         amount: amountNumber,
       });
 
-      alert("Nạp tiền thành công");
+      alert("Nạp tiền thànhcông");
 
       await fetchWallet();
       await fetchHistory();
@@ -94,7 +102,7 @@ const DepositPage = () => {
           <section className="flex-1 flex flex-col gap-6">
             <div>
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate("/dashboard")}
                 className="flex items-center gap-2 text-[#648772] hover:text-primary transition-colors mb-4"
               >
                 <span className="material-symbols-outlined">arrow_back</span>
@@ -198,9 +206,9 @@ const DepositPage = () => {
                   $
                   {wallet
                     ? wallet.balance.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })
                     : "Loading..."}
                 </strong>
               </div>
@@ -284,12 +292,13 @@ const DepositPage = () => {
                       </span>
 
                       <span
-                        className={`text-xs font-medium ${tx.status === "COMPLETED"
+                        className={`text-xs font-medium ${
+                          tx.status === "COMPLETED"
                             ? "text-green-600"
                             : tx.status === "PENDING"
-                              ? "text-yellow-500"
-                              : "text-red-500"
-                          }`}
+                            ? "text-yellow-500"
+                            : "text-red-500"
+                        }`}
                       >
                         {tx.status}
                       </span>
