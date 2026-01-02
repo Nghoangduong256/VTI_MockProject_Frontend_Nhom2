@@ -31,7 +31,12 @@ export const DepositService = {
    * @param {number} walletId
    */
   getRecentDeposits(walletId) {
-    return apiClient.get(`${DEPOSIT_ENDPOINT}/wallet/${walletId}/recent-deposits`);
+    return apiClient.get(
+      `${DEPOSIT_ENDPOINT}/wallet/${walletId}/recent-deposits`
+    );
+  },
+  getWalletByUserName(userName) {
+    return apiClient.get(`${DEPOSIT_ENDPOINT}/wallet-by-username/${userName}`);
   },
 };
 
