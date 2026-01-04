@@ -8,6 +8,7 @@ import DepositPage from "../features/auth/pages/DepositPage";
 import Withdraw from "../features/withdraw/Withdraw";
 import ReceiveMoneyPage from "../features/auth/pages/ReceiveMoneyPage";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
+import TransferHistoryPage from "../features/auth/pages/TransferHistoryPage";
 
 function AppRoutes() {
   return (
@@ -50,7 +51,16 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/transfer-history"
+        element={
+          <ProtectedRoute>
+            <TransferHistoryPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
+
   );
 }
 
