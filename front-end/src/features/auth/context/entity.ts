@@ -1,10 +1,18 @@
-export interface User {
+/** Map đúng UserProfileDTO từ backend */
+export interface UserProfile {
+  userName: string;
+  email: string;
+
   firstName: string;
   lastName: string;
-  avatar?: string; //Base64 string
-  username: string;
-  email: string;
+
+  avatar?: string; // Base64
+  avatarUrl?: string;
+
+  verified: boolean;
+  membership?: string;
+
   phone?: string;
-  dateOfBirth?: string;
+  dateOfBirth?: string; // yyyy-MM-dd
   address?: string;
 }
