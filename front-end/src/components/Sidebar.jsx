@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { useState, useEffect } from "react";
-import userService from "../services/userService";
+import userService from "../features/auth/services/profile/userService";
 
 export default function Sidebar({ activeRoute = "dashboard" }) {
     const navigate = useNavigate();
@@ -61,8 +61,8 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
                             key={item.id}
                             onClick={() => handleNavigation(item.path)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-full transition-all w-full text-left ${activeRoute === item.id
-                                    ? 'bg-primary text-text-main shadow-md shadow-primary/20'
-                                    : 'text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e]'
+                                ? 'bg-primary text-text-main shadow-md shadow-primary/20'
+                                : 'text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e]'
                                 }`}
                         >
                             <span
