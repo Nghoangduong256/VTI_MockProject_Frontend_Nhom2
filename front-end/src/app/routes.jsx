@@ -39,7 +39,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/profiles" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/spending-summary" element={<ProtectedRoute><SpendingSummaryPage /></ProtectedRoute>} />
       <Route
         path="/receive-money"

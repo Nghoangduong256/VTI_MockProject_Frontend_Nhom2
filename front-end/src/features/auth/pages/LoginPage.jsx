@@ -46,7 +46,7 @@ export default function LoginPage() {
 
             if (result.success) {
                 // Redirect đến dashboard sau khi login thành công
-                navigate("/profiles");
+                navigate("/profile");
             } else {
                 setLocalError(result.error?.message || "Đăng nhập thất bại");
             }

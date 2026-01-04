@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import Header from "../components/Header";
-import Sidebar from "../components/Sidebar";
+// import Sidebar from "../../../components/Sidebar";
 import { userService } from "../services/profile/userService";
 import { data } from "react-router-dom";
+import Sidebar_bkup from "../components/Sidebar_bkup";
+import Sidebar from "../../../components/Sidebar";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -126,7 +128,9 @@ export default function ProfilePage() {
       <Header />
 
       <div className="flex min-h-[calc(100vh-64px)] bg-gray-50">
-        <Sidebar user={user} active="Profile" />
+        {/* <Sidebar_bkup user={user} active="Profile" /> */}
+        <Sidebar activeRoute="profile" />
+
 
         <main className="flex-1 flex justify-center">
           <div className="w-full max-w-[1440px] p-6">
