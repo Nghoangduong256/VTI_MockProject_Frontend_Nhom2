@@ -27,6 +27,7 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
     const navItems = [
         { id: "dashboard", icon: "grid_view", label: "Dashboard", path: "/dashboard", filled: true },
         { id: "deposit", icon: "account_balance_wallet", label: "My Wallet", path: "/deposit" },
+        { id: "withdraw", icon: "account_balance_wallet", label: "Withdraw", path: "/withdraw" },
         { id: "receive", icon: "qr_code_scanner", label: "Receive Money", path: "/receive-money" },
         { id: "transactions", icon: "swap_horiz", label: "Transactions", path: "#" },
         { id: "analytics", icon: "bar_chart", label: "Analytics", path: "#" },
