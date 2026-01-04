@@ -45,6 +45,7 @@ export default function LoginPage() {
             });
 
             if (result.success) {
+                localStorage.setItem('token', result.data.token);
                 // Redirect đến dashboard sau khi login thành công
                 navigate("/dashboard");
             } else {
