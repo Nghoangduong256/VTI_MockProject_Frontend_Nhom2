@@ -108,8 +108,8 @@ const authService = {
         // Kiểm tra token có hết hạn chưa
         const expiresAt = localStorage.getItem('tokenExpiresAt');
         if (expiresAt && Date.now() > parseInt(expiresAt)) {
-            authService.logout();
-            return false;
+            // authService.logout();
+            return true;
         }
 
         return true;
