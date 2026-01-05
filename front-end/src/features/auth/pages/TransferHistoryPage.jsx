@@ -93,9 +93,9 @@ export default function TransferHistoryPage() {
     }, [page, direction, timeRange]);
 
     return (
-        <div className="dark bg-background-dark min-h-screen font-display text-white">
+        <div className="dark bg-background-white min-h-screen font-display text-white">
             {/* ================= TOP NAV ================= */}
-            <header className="sticky top-0 z-50 w-full bg-[#111714]/90 backdrop-blur-md border-b border-border-dark pt-8 pb-5">
+            <header className="sticky top-0 z-50 w-full bg-white backdrop-blur-md border-b border-border-dark pt-8 pb-5">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <section className="flex-1 flex flex-col gap-6">
                         <div>
@@ -116,10 +116,10 @@ export default function TransferHistoryPage() {
                 {/* PAGE HEADING */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                     <div className="flex flex-col gap-2">
-                        <h1 className="text-4xl font-black tracking-tight">
+                        <h1 className="text-4xl font-black tracking-tight text-black">
                             Transfer &amp; Receive
                         </h1>
-                        <p className="text-text-muted text-base">
+                        <p className="text-black text-base">
                             Manage your transactions securely and instantly.
                         </p>
                     </div>
@@ -136,16 +136,16 @@ export default function TransferHistoryPage() {
                 {/* ================= SEND / RECEIVE ================= */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
                     {/* SEND MONEY PANEL */}
-                    <div className="lg:col-span-7 flex flex-col bg-surface-dark border border-border-dark rounded-xl overflow-hidden shadow-lg">
+                    <div className="lg:col-span-7 flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
                         {/* Tabs Header */}
-                        <div className="flex border-b border-border-dark bg-[#161d19]">
-                            <button className="flex-1 py-4 text-center border-b-2 border-primary bg-surface-dark">
-                                <span className="text-white text-sm font-bold tracking-wide">
+                        <div className="flex border-b border-gray-200 bg-white">
+                            <button className="flex-1 py-4 text-center border-b-2 border-primary bg-white">
+                                <span className="text-black text-sm font-bold tracking-wide">
                                     Send Money
                                 </span>
                             </button>
-                            <button className="flex-1 py-4 text-center border-b-2 border-transparent hover:bg-surface-dark/50 transition-colors group">
-                                <span className="text-text-muted group-hover:text-white text-sm font-bold tracking-wide">
+                            <button className="flex-1 py-4 text-center border-b-2 border-transparent hover:bg-gray-100 transition-colors group">
+                                <span className="text-black group-hover:text-black text-sm font-bold tracking-wide">
                                     Request
                                 </span>
                             </button>
@@ -154,17 +154,17 @@ export default function TransferHistoryPage() {
                         <div className="p-6 md:p-8 flex flex-col gap-6">
                             {/* Recipient Search */}
                             <div className="flex flex-col gap-3">
-                                <label className="text-white text-base font-medium">
+                                <label className="text-black text-base font-medium">
                                     Recipient
                                 </label>
                                 <div className="relative group">
                                     <input
-                                        className="w-full h-14 bg-background-dark border border-border-dark rounded-xl px-4 pl-12 text-white placeholder:text-text-muted focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                                        className="w-full h-14 bg-white border border-gray-300 rounded-xl px-4 pl-12 text-black placeholder:text-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                         placeholder="Phone, Email, or Wallet ID"
                                         type="text"
                                         defaultValue="Jane Doe"
                                     />
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-black group-focus-within:text-primary transition-colors">
                                         search
                                     </span>
                                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-primary">
@@ -174,7 +174,7 @@ export default function TransferHistoryPage() {
                             </div>
 
                             {/* Selected Recipient Card */}
-                            <div className="bg-[#232e27]/50 p-4 rounded-xl border border-dashed border-border-dark flex items-center justify-between gap-4">
+                            <div className="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300 flex items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
                                     <div
                                         className="size-12 rounded-full bg-cover bg-center"
@@ -184,8 +184,8 @@ export default function TransferHistoryPage() {
                                         }}
                                     />
                                     <div>
-                                        <p className="text-white font-bold text-base">Jane Doe</p>
-                                        <p className="text-text-muted text-sm">ID: **** 4321</p>
+                                        <p className="text-black font-bold text-base">Jane Doe</p>
+                                        <p className="text-gray-600 text-sm">ID: **** 4321</p>
                                     </div>
                                 </div>
                                 <button className="text-primary text-sm font-medium hover:underline">
@@ -197,39 +197,36 @@ export default function TransferHistoryPage() {
                             <div className="flex flex-col md:flex-row gap-6">
                                 {/* Amount Input */}
                                 <div className="flex-1 flex flex-col gap-3">
-                                    <label className="text-white text-base font-medium">
+                                    <label className="text-black text-base font-medium">
                                         Amount
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-2xl font-light">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-black text-2xl font-light">
                                             $
                                         </span>
                                         <input
-                                            className="w-full h-20 bg-background-dark border border-border-dark rounded-xl pl-10 pr-4 text-4xl md:text-5xl font-bold text-white placeholder:text-text-muted/30 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                                            className="w-full h-20 bg-white border border-gray-300 rounded-xl pl-10 pr-4 text-4xl md:text-5xl font-bold text-black placeholder:text-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="0.00"
                                             type="number"
                                             defaultValue="150.00"
                                         />
                                     </div>
-                                    <p className="text-text-muted text-sm flex items-center gap-1">
+                                    <p className="text-black text-sm flex items-center gap-1">
                                         <span className="material-symbols-outlined text-base">
                                             account_balance_wallet
                                         </span>
-                                        Balance:{" "}
-                                        <span className="text-white font-medium">$4,250.80</span>
+                                        Balance:
+                                        <span className="text-black font-medium">$4,250.80</span>
                                     </p>
                                 </div>
 
                                 {/* Note */}
-                                <div className="flex-1 flex flex-col gap-3">
-                                    <label className="text-white text-base font-medium">
-                                        Note{" "}
-                                        <span className="text-text-muted font-normal">
-                                            (Optional)
-                                        </span>
+                                <div className="flex-1 flex flex-col gap-3 text-black">
+                                    <label className="text-base font-medium">
+                                        Note <span className="font-normal">(Optional)</span>
                                     </label>
                                     <textarea
-                                        className="w-full h-20 md:h-[108px] bg-background-dark border border-border-dark rounded-xl p-4 text-white placeholder:text-text-muted focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none transition-all"
+                                        className="w-full h-20 md:h-[108px] bg-white border border-gray-300 rounded-xl p-4 text-black placeholder:text-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none transition-all"
                                         placeholder="What is this for?"
                                     />
                                 </div>
@@ -239,7 +236,7 @@ export default function TransferHistoryPage() {
                             <button
                                 onClick={handleSendNow}
                                 disabled={sending}
-                                className="mt-2 w-full h-14 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-background-dark font-bold text-lg rounded-full shadow-glow transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+                                className="mt-2 w-full h-14 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg rounded-full shadow-glow transition-all active:scale-[0.99] flex items-center justify-center gap-2"
                             >
                                 {sending ? "Sending..." : "Send Now"}
                                 <span className="material-symbols-outlined">arrow_forward</span>
@@ -247,11 +244,12 @@ export default function TransferHistoryPage() {
                         </div>
                     </div>
 
+
                     {/* RECEIVE MONEY PANEL */}
                     <div className="lg:col-span-5 flex flex-col h-full">
                         <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden h-full flex flex-col">
                             <div className="p-6 border-b border-border-dark flex justify-between items-center">
-                                <h3 className="text-white text-lg font-bold">Receive Money</h3>
+                                <h3 className="text-black text-lg font-bold">Receive Money</h3>
                                 <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
                                     My QR
                                 </span>
@@ -265,20 +263,20 @@ export default function TransferHistoryPage() {
                                         alt="QR Code for receiving payment"
                                     />
                                 </div>
-                                <div className="text-center">
-                                    <p className="text-white font-bold text-lg">Jane Doe</p>
-                                    <p className="text-text-muted text-sm font-mono mt-1 bg-background-dark/50 px-3 py-1 rounded-lg inline-block border border-border-dark/50">
+                                <div className="text-center text-black">
+                                    <p className="font-bold text-lg">Jane Doe</p>
+                                    <p className="text-sm font-mono mt-1 bg-background-white px-3 py-1 rounded-lg inline-block border border-border-dark/50">
                                         0x3f...8a21
                                     </p>
                                 </div>
-                                <div className="flex w-full gap-3 mt-2">
-                                    <button className="flex-1 flex items-center justify-center gap-2 h-10 border border-border-dark rounded-full text-white text-sm font-medium hover:bg-background-dark transition-colors">
+                                <div className="flex w-full gap-3 mt-2 text-black">
+                                    <button className="flex-1 flex items-center justify-center gap-2 h-10 border border-black rounded-full text-sm font-medium hover:bg-background-dark transition-colors">
                                         <span className="material-symbols-outlined text-lg">
                                             download
                                         </span>
                                         Save
                                     </button>
-                                    <button className="flex-1 flex items-center justify-center gap-2 h-10 border border-border-dark rounded-full text-white text-sm font-medium hover:bg-background-dark transition-colors">
+                                    <button className="flex-1 flex items-center justify-center gap-2 h-10 border border-black rounded-full text-sm font-medium hover:bg-background-dark transition-colors">
                                         <span className="material-symbols-outlined text-lg">
                                             share
                                         </span>
@@ -294,7 +292,7 @@ export default function TransferHistoryPage() {
                 <div className="flex flex-col gap-6">
                     {/* Header + Filters */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <h3 className="text-white text-xl font-bold">
+                        <h3 className="text-black text-xl font-bold">
                             Transaction History
                         </h3>
                         <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
@@ -346,46 +344,46 @@ export default function TransferHistoryPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto rounded-xl border border-border-dark bg-surface-dark">
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-[#161d19] border-b border-border-dark">
-                                    <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                                <tr className="bg-gray-50 border-b border-gray-200 text-black">
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                                         Date
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                                         Entity
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                                         Type
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                                         Amount
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                                         Status
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-bold text-text-muted uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                                         Note
                                     </th>
                                     <th className="px-6 py-4 w-10" />
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y divide-border-dark">
+                            <tbody className="divide-y divide-gray-200">
                                 {transactions.map((tx) => (
                                     <tr
                                         key={tx.id}
-                                        className="group hover:bg-background-dark/50 transition-colors cursor-pointer"
+                                        className="group hover:bg-gray-100 transition-colors cursor-pointer"
                                         onClick={() => navigate(`/transactions/${tx.id}`)}
                                     >
                                         {/* Date + time */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-white text-sm font-medium">
+                                                <span className="text-black text-sm font-medium">
                                                     {new Date(tx.createdAt).toLocaleDateString()}
                                                 </span>
-                                                <span className="text-text-muted text-xs">
+                                                <span className="text-gray-500 text-xs">
                                                     {new Date(tx.createdAt).toLocaleTimeString()}
                                                 </span>
                                             </div>
@@ -393,14 +391,14 @@ export default function TransferHistoryPage() {
 
                                         {/* Entity / partner */}
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-white text-sm font-medium">
+                                            <span className="text-black text-sm font-medium">
                                                 {tx.partnerName}
                                             </span>
                                         </td>
 
                                         {/* Type */}
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-text-muted text-sm">
+                                            <span className="text-gray-600 text-sm">
                                                 {tx.direction === "OUT" ? "Sent" : "Received"}
                                             </span>
                                         </td>
@@ -409,7 +407,7 @@ export default function TransferHistoryPage() {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span
                                                 className={`font-bold text-sm ${tx.direction === "OUT"
-                                                    ? "text-white"
+                                                    ? "text-black"
                                                     : "text-primary"
                                                     }`}
                                             >
@@ -439,14 +437,14 @@ export default function TransferHistoryPage() {
 
                                         {/* Note */}
                                         <td className="px-6 py-4 whitespace-nowrap max-w-[200px]">
-                                            <span className="text-text-muted text-sm truncate block">
+                                            <span className="text-gray-600 text-sm truncate block">
                                                 {tx.note}
                                             </span>
                                         </td>
 
                                         {/* Chevron */}
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <span className="material-symbols-outlined text-text-muted group-hover:text-white text-lg">
+                                            <span className="material-symbols-outlined text-gray-400 group-hover:text-black text-lg">
                                                 chevron_right
                                             </span>
                                         </td>
@@ -457,7 +455,7 @@ export default function TransferHistoryPage() {
                                     <tr>
                                         <td
                                             colSpan={7}
-                                            className="px-6 py-8 text-center text-text-muted text-sm"
+                                            className="px-6 py-8 text-center text-gray-500 text-sm"
                                         >
                                             No transactions found for this filter.
                                         </td>
@@ -467,29 +465,30 @@ export default function TransferHistoryPage() {
                         </table>
                     </div>
 
+
                     {/* PAGINATION */}
-                    <div className="flex justify-between items-center px-2">
-                        <p className="text-text-muted text-sm">
+                    <div className="flex justify-between items-center px-2 text-black">
+                        <p className="text-black text-sm">
                             Showing{" "}
-                            <span className="text-white font-medium">
+                            <span className="font-medium">
                                 {totalElements === 0 ? 0 : page * PAGE_SIZE + 1}
                             </span>{" "}
                             of{" "}
-                            <span className="text-white font-medium">{totalElements}</span>{" "}
+                            <span className="font-medium">{totalElements}</span>{" "}
                             transactions
                         </p>
                         <div className="flex gap-2">
                             <button
                                 disabled={page === 0}
                                 onClick={() => setPage((p) => p - 1)}
-                                className="px-3 py-1 rounded-lg border border-border-dark text-text-muted hover:text-white hover:bg-surface-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:text-black hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Previous
                             </button>
                             <button
                                 disabled={(page + 1) * PAGE_SIZE >= totalElements}
                                 onClick={() => setPage((p) => p + 1)}
-                                className="px-3 py-1 rounded-lg border border-border-dark text-text-muted hover:text-white hover:bg-surface-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:text-black hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Next
                             </button>
