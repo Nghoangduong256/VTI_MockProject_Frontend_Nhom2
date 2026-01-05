@@ -28,10 +28,10 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
     const navItems = [
         { id: "dashboard", icon: "grid_view", label: "Wallet Overview", path: "/dashboard", filled: true },
         { id: "deposit", icon: "arrow_downward", label: "Deposit", path: "/deposit" },
+        { id: "withdraw", icon: "arrow_upward", label: "Withdraw", path: "/withdraw" },
         { id: "receive", icon: "qr_code_scanner", label: "Receive Money", path: "/receive-money" },
-        { id: "transactions", icon: "swap_horiz", label: "Transactions", path: "#" },
+        { id: "transactions", icon: "swap_horiz", label: "Transactions", path: "/transfer-history" },
         { id: "profile", icon: "person", label: "Profile", path: "/profile" },
-        { id: "cards", icon: "credit_card", label: "My Cards", path: "#" },
     ];
 
     console.log(user.avatar);
