@@ -12,8 +12,8 @@ export default function Header() {
         </div>
 
         <div className="flex gap-3">
-          <button className="size-10 rounded-lg bg-gray-100">🔔</button>
-          <button className="size-10 rounded-lg bg-gray-100">🚪</button>
+          <button className="size-10 rounded-lg bg-gray-100"><i class="fas fa-bell"></i></button>
+          <button className="size-10 rounded-lg bg-gray-100"><i class="fas fa-sign-out-alt"></i></button>
         </div>
       </div>
     </header>

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { formatVND, formatDateRangeFromNow } from "./utils";
 
+import walletService from "../../services/walletService"
+
 // WithdrawPage.jsx
 export default function Withdraw() {
   const profileImageUrl =
     "https://lh3.googleusercontent.com/aida-public/AB6AXuA635xw_wV_WH17wTeYV52OX0PrpPGeE4wnBFdf0-HxVILVOR9YvK1EjEt5Zny0XgxY7mZz4jxWtnhueAKL_uZEzlQURhlZbSTcjMy2W41qb5ofVleNRMHWGNbWue2vM6mwM5iTiVPb8uHngCOs4wmVPYuelfBnBJ_3QXRDR9ysbgbG2onE1zWE12uO72mVQ2pxgC9Hk2BUkIGrhsh6V1VZacxU7cZzPMtfqNXCeg-Dig9xIjcLE2hDwybUfhLukkvUHbWrmvyhHRTF";
 
-  const token =
-    "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTc2Njc1ODgyNCwiZXhwIjoxNzY4MDU0ODI0fQ.jcTltrYLxm3WKGFxe91Vpvz1lftH2eAGGT4hUGoO3ms";
+  const token = localStorage.getItem("token");
   const [bankAccounts, setBankAccounts] = useState(null);
   const [user, setUser] = useState(null);
   const [withdrawAmount, setWithdrawAmount] = useState(100000);
