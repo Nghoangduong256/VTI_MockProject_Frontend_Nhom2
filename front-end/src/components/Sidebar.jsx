@@ -1,59 +1,73 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { useState, useEffect } from "react";
-import userService from "../services/userService";
+import userService from "../features/auth/services/profile/userService";
 
 export default function Sidebar({ activeRoute = "dashboard" }) {
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { user, logout } = useAuth(); // 🔥 LẤY USER ĐANG LOGIN
     const [profile, setProfile] = useState(null);
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const profileRes = await userService.getProfile();
-                setProfile(profileRes);
-            } catch (error) {
-                console.error("Error fetching profile:", error);
-            }
-        };
-        fetchProfile();
-    }, []);
 
     const handleNavigation = (path) => {
         navigate(path);
     };
 
+    // Resolve Base64
+    const resolveAvatarSrc = (avatar) => {
+        if (!avatar) return "https://i.pravatar.cc/150?img=12";
+
+        // Nếu đã là data:image thì dùng luôn
+        if (avatar.startsWith("data:image")) return avatar;
+
+        // Nếu là base64 thuần
+        return `data:image/jpeg;base64,${avatar}`;
+    };
+
+
     const navItems = [
-        { id: "dashboard", icon: "grid_view", label: "Dashboard", path: "/dashboard", filled: true },
-        { id: "deposit", icon: "account_balance_wallet", label: "My Wallet", path: "/deposit" },
-        { id: "withdraw", icon: "account_balance_wallet", label: "Withdraw", path: "/withdraw" },
+        { id: "dashboard", icon: "grid_view", label: "Wallet Overview", path: "/dashboard", filled: true },
+        { id: "deposit", icon: "arrow_downward", label: "Deposit", path: "/deposit" },
         { id: "receive", icon: "qr_code_scanner", label: "Receive Money", path: "/receive-money" },
         { id: "transactions", icon: "swap_horiz", label: "Transactions", path: "#" },
-        { id: "analytics", icon: "bar_chart", label: "Analytics", path: "#" },
+        { id: "profile", icon: "person", label: "Profile", path: "/profile" },
         { id: "cards", icon: "credit_card", label: "My Cards", path: "#" },
     ];
+
+    console.log(user.avatar);
+    console.log("AUTH USER:", user);
+
 
     return (
         <aside className="hidden md:flex flex-col w-72 h-full bg-white dark:bg-[#1a2c22] border-r border-gray-100 dark:border-[#2a3c32] p-6 justify-between">
             <div className="flex flex-col gap-8">
                 {/* User Profile */}
                 <div className="flex items-center gap-4 px-2">
-                    <div
-                        className="bg-center bg-no-repeat bg-cover rounded-full size-12 shadow-sm"
-                        style={{
-                            backgroundImage: `url("${profile?.avatarUrl || 'https://via.placeholder.com/150'}")`,
-                        }}
-                    />
-                    <div className="flex flex-col">
-                        <h1 className="text-base font-semibold leading-tight text-text-main dark:text-white">
-                            {profile?.fullName || 'User'}
+                    {/* Avatar */}
+                    <div className="relative">
+                        <img
+                            src={resolveAvatarSrc(user?.avatar)}
+                            alt="avatar"
+                            className="w-12 h-12 rounded-full object-cover border"
+                        />
+
+                    </div>
+
+                    {/* User Info */}
+                    <div className="flex flex-col gap-1">
+                        <h1 className="text-sm font-semibold text-text-main dark:text-white leading-tight">
+                            {user?.username}
                         </h1>
-                        <p className="text-text-sub dark:text-gray-400 text-sm">
-                            {profile?.membership || 'Member'}
-                        </p>
+
+                        {/* Membership badge */}
+                        <span className="inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+            bg-purple-100 text-purple-700
+            dark:bg-purple-500/20 dark:text-purple-300">
+                            {user?.membership || "Free"}
+                        </span>
                     </div>
                 </div>
+
 
                 {/* Navigation */}
                 <nav className="flex flex-col gap-2">
@@ -62,8 +76,8 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
                             key={item.id}
                             onClick={() => handleNavigation(item.path)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-full transition-all w-full text-left ${activeRoute === item.id
-                                    ? 'bg-primary text-text-main shadow-md shadow-primary/20'
-                                    : 'text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e]'
+                                ? 'bg-primary text-text-main shadow-md shadow-primary/20'
+                                : 'text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e]'
                                 }`}
                         >
                             <span
@@ -98,3 +112,4 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
         </aside>
     );
 }
+

@@ -40,9 +40,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/reigister" element={<RegisterPage />} />
-      <Route path="/profiles" element={<ProfilePage />} />
-      <Route path="/spending-summary" element={<SpendingSummaryPage />} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/spending-summary" element={<ProtectedRoute><SpendingSummaryPage /></ProtectedRoute>} />
       <Route
         path="/receive-money"
         element={
