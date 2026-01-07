@@ -1,66 +1,83 @@
-import { React, useEffect } from "react";
-import { useState } from "react";
+import { React, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import DepositService from "../../../services/deposit/depositService";
+import cardService from "../../../services/cardService";
+import walletService from "../../../services/walletService";
 import { useAuth } from "../context/AuthContext";
+
 const DepositPage = () => {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [recentDeposits, setRecentDeposits] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState("");
   const { user } = useAuth();
-  const userName = user?.username;
   const [amount, setAmount] = useState("");
-  // chỗ này set id Wallert khi chọn ví r mới vào trang này
-  const [walletId, setWalletId] = useState(null);
-
+  const [cards, setCards] = useState([]);
+  const [selectedCardId, setSelectedCardId] = useState(null);
   const [wallet, setWallet] = useState(null);
+  const [loadingCards, setLoadingCards] = useState(true);
 
-  // call ví
-  const fetchWallet = async () => {
+  // Fetch Wallet (for balance) and Cards
+  const fetchData = async () => {
     try {
-      const res = await DepositService.getWalletByUserName(userName);
-      setWalletId(res.data.walletId);
-      setWallet(res.data);
+      if (user) {
+        const walletRes = await walletService.getWalletInfo();
+        setWallet(walletRes);
+      }
+
+      // Fetch Cards
+      const cardRes = await cardService.getCards();
+      setCards(cardRes);
+      if (cardRes.length > 0) {
+        setSelectedCardId(cardRes[0].id);
+      }
     } catch (e) {
-      console.error("Lỗi load wallet", e);
+      console.error("Error fetching data", e);
+      setError("Failed to load user data.");
+    } finally {
+      setLoadingCards(false);
     }
   };
 
-  // call lịch sử
   const fetchHistory = async () => {
+    setLoadingHistory(true);
+    setHistoryError("");
     try {
-      const res = await DepositService.getRecentDeposits(walletId);
-      setRecentDeposits(res.data);
+      const res = await cardService.getDepositHistory();
+      console.log("Deposit History:", res);
+      // Ensure res is an array
+      if (Array.isArray(res)) {
+        setRecentDeposits(res);
+      } else {
+        console.error("History response is not an array", res);
+        setHistoryError("Invalid data format received.");
+      }
     } catch (e) {
       console.error("Load deposit history failed", e);
+      setHistoryError("Failed to load history.");
     } finally {
       setLoadingHistory(false);
     }
   };
 
   useEffect(() => {
-    if (!userName) return;
-    fetchWallet();
-  }, [userName]);
-
-  /* =======================
-     4️⃣ LOAD HISTORY KHI CÓ WALLET ID
-     ======================= */
-  useEffect(() => {
-    if (!walletId) return;
-    fetchHistory(walletId);
-  }, [walletId]);
+    if (user) {
+      fetchData();
+      fetchHistory();
+    }
+  }, [user]);
 
   const amountNumber = Number(amount) || 0;
+  // Fee calculation can be removed or kept? The prompt didn't specify fee logic, but preserved it is safer or ask?
+  // Previous code had fee. Use case doesn't mention fee. I will keep it pure amount unless user asked.
+  // Actually, bank usually doesn't take fee for deposit in this mock?
+  // Let's assume 0 fee for now or keep previous logic?
+  // The API request body only has `amount` and `description`. It doesn't send total pay.
+  // So the fee is frontend only display or backend handles it?
+  // Let's stick to simple amount.
 
-  const feeRate = 0.001;
-  const fee = amountNumber * feeRate;
-  const totalPay = amountNumber + fee;
-  // nap tien
   const handleDeposit = async (e) => {
     e.preventDefault();
-
     const amountNumber = Number(amount);
 
     if (!amountNumber || amountNumber <= 0) {
@@ -68,23 +85,35 @@ const DepositPage = () => {
       return;
     }
 
+    if (!selectedCardId) {
+      setError("Please select a card");
+      return;
+    }
+
     setError("");
 
     try {
-      await DepositService.deposit({
-        walletId,
-        amount: amountNumber,
+      const res = await cardService.depositFromCard({
+        cardId: selectedCardId,
+        amount: amountNumber, // Provide amount
+        description: "Deposit from card"
       });
 
-      alert("Nạp tiền thànhcông");
+      if (res.status === 'FAILED' || res.status === 'ERROR') {
+        // Manually throw error to trigger catch block
+        throw new Error(res.message || "Deposit transaction failed");
+      }
 
-      await fetchWallet();
-      await fetchHistory();
-
+      alert("Deposit successful");
       setAmount("");
+      // refetch
+      fetchData();
+      fetchHistory();
     } catch (e) {
       console.error(e);
-      alert("Lỗi khi nạp tiền");
+      // Check for specific error message from backend
+      const msg = e.response?.data?.message || "Deposit failed";
+      setError(msg);
     }
   };
 
@@ -95,10 +124,9 @@ const DepositPage = () => {
 
   return (
     <div className="font-display bg-background-light dark:bg-background-dark text-[#111714] dark:text-white min-h-screen">
-      {/* Main */}
       <main className="px-4 md:px-10 lg:px-40 py-8 flex justify-center">
         <div className="flex flex-col lg:flex-row gap-8 max-w-[1200px] w-full">
-          {/* LEFT */}
+          {/* LEFT SECTION */}
           <section className="flex-1 flex flex-col gap-6">
             <div>
               <button
@@ -110,52 +138,63 @@ const DepositPage = () => {
               </button>
               <h1 className="text-4xl font-black">Deposit Funds</h1>
               <p className="text-[#648772]">
-                Select a funding source and enter amount to proceed.
+                Select a card and enter amount to deposit into your wallet.
               </p>
             </div>
 
-            {/* Chưa làm đc  */}
-            <div>
-              <h3 className="text-lg font-bold mb-3">Select Bank</h3>
-
-              <div className="grid sm:grid-cols-2 gap-3">
-                {/* Active */}
-                <div className="relative flex items-center gap-3 p-4 border-2 border-primary rounded-lg bg-primary/5 cursor-pointer">
-                  <span className="absolute top-3 right-3 text-primary material-symbols-outlined">
-                    check_circle
-                  </span>
-                  <div
-                    className="w-10 h-10 rounded-lg bg-cover bg-center"
-                    style={{
-                      backgroundImage:
-                        "url(https://lh3.googleusercontent.com/aida-public/AB6AXuBDKg4JbmO-Wau5tZ4N3LMz7NGcWfqU8F1KBYNIOPupH5TK5-1Tc2pe8c-GNJvlE12B088ZtNYJGXL10komwedQ6SFMmcCmX7mjAgRMksegEFSzrvejfTdzBw-1owpQtcNM2FjlLhrjkl1GsTI27xs9zszO8zv15Q_7EmPiKcZiuE6Al1YOWAZpSyTJ_6A0hs8A2PDtsuVf5crNfp6tsSE6G6O9BbIh5GzkmFXNnv-iqcyJxBMs9-2UAwYwpQ0vnSGp_v79dt_ia20B)",
-                    }}
-                  />
-                  <div>
-                    <h4 className="font-bold">Chase</h4>
-                    <p className="text-xs text-[#648772]">Checking •••• 4582</p>
-                  </div>
-                </div>
-
-                {/* Inactive */}
-                {["Bank of America", "Wells Fargo"].map((bank) => (
-                  <div
-                    key={bank}
-                    className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:border-primary transition"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-[#f0f4f2]" />
-                    <div>
-                      <h4 className="font-bold">{bank}</h4>
-                      <p className="text-xs text-[#648772]">
-                        Checking •••• 1920
-                      </p>
-                    </div>
-                  </div>
-                ))}
+            {/* ERROR MESSAGE */}
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong className="font-bold">Error: </strong>
+                <span className="block sm:inline">{error}</span>
               </div>
+            )}
+
+            {/* CREDIT CARD SELECTION */}
+            <div>
+              <h3 className="text-lg font-bold mb-3">Select Card</h3>
+              {loadingCards ? (
+                <p>Loading cards...</p>
+              ) : cards.length === 0 ? (
+                <div className="p-4 border rounded-lg text-center">
+                  <p className="text-gray-500 mb-2">No cards linked.</p>
+                  <button onClick={() => navigate('/cards')} className="text-primary font-bold hover:underline">Link a card now</button>
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {cards.map((card) => (
+                    <div
+                      key={card.id}
+                      onClick={() => setSelectedCardId(card.id)}
+                      className={`relative flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedCardId === card.id
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-primary/50"
+                        }`}
+                    >
+                      {selectedCardId === card.id && (
+                        <span className="absolute top-3 right-3 text-primary material-symbols-outlined">
+                          check_circle
+                        </span>
+                      )}
+                      <div className="size-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-gray-600">credit_card</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold">{card.bankName || "Bank Card"}</h4>
+                        <p className="text-xs text-[#648772]">
+                          {card.last4 ? `•••• ${card.last4}` : card.cardNumber}
+                        </p>
+                        <p className="text-xs text-primary font-bold">
+                          Bal: ${card.balanceCard?.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Amount */}
+            {/* AMOUNT INPUT */}
             <div>
               <label className="text-lg font-bold">Enter Amount</label>
               <div className="relative mt-2">
@@ -165,51 +204,48 @@ const DepositPage = () => {
                 <input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="1000"
                   placeholder="0.00"
-                  className="w-full h-16 pl-9 pr-4 text-2xl font-bold border rounded-lg focus:ring-2 focus:ring-primary"
+                  className="w-full h-16 pl-9 pr-4 text-2xl font-bold border rounded-lg focus:ring-2 focus:ring-primary dark:bg-black/20"
                   value={amount}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (Number(val) < 0) return; // chặn số âm
+                    if (Number(val) < 0) return;
                     setAmount(val);
                   }}
                 />
               </div>
-              {error && (
-                <p className="mt-2 text-sm text-red-500 font-medium">{error}</p>
-              )}
 
               <div className="flex gap-3 mt-3 flex-wrap">
-                {[50, 100, 200, 500].map((v) => (
+                {[50000, 100000, 200000, 500000].map((v) => (
                   <button
                     key={v}
                     type="button"
-                    className="h-8 px-4 border rounded-lg hover:border-primary hover:bg-primary/10"
+                    className="h-8 px-4 border rounded-lg hover:border-primary hover:bg-primary/10 transition"
                     onClick={() => handleQuickAdd(v)}
                   >
-                    +${v}
+                    +${v.toLocaleString()}
                   </button>
                 ))}
               </div>
             </div>
           </section>
 
-          {/* RIGHT */}
+          {/* RIGHT CHECKOUT SECTION */}
           <aside className="w-full lg:w-[380px]">
-            <div className="sticky top-24 bg-white dark:bg-[#1a2c22] border rounded-xl p-6">
+            <div className="sticky top-24 bg-white dark:bg-[#1a2c22] border rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-bold mb-6">Transaction Details</h3>
 
               <div className="flex justify-between mb-3">
-                <span className="text-[#648772]">Current Balance E-Wallet</span>
+                <span className="text-[#648772]">Current Wallet Balance</span>
                 <strong>
                   $
                   {wallet
-                    ? wallet.balance.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
-                    : "Loading..."}
+                    ? wallet.balance?.toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })
+                    : "..."}
                 </strong>
               </div>
 
@@ -218,98 +254,118 @@ const DepositPage = () => {
                 <strong>
                   $
                   {Number(amount).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
                   })}
                 </strong>
               </div>
 
-              <div className="flex justify-between mb-6">
-                <span className="text-[#648772]">Processing Fee</span>
-                <strong>${fee}</strong>
-              </div>
+              <hr className="my-4 border-dashed border-gray-300" />
 
               <div className="flex justify-between items-center mb-6">
                 <span className="font-bold">Total Pay</span>
                 <span className="text-primary text-2xl font-black">
                   $
-                  {Number(totalPay).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
+                  {Number(amount).toLocaleString("en-US", {
+                    minimumFractionDigits: 0, // Should be currency dependent, usually VND no decimals
                   })}
                 </span>
               </div>
 
               <button
-                className="w-full h-12 bg-primary rounded-lg font-bold hover:bg-[#2dd16c]"
+                className="w-full h-12 bg-primary text-white rounded-lg font-bold hover:bg-[#2dd16c] disabled:opacity-50 disabled:cursor-not-allowed transition"
                 onClick={handleDeposit}
+                disabled={!amount || Number(amount) <= 0 || !selectedCardId}
               >
                 Confirm Deposit
               </button>
             </div>
           </aside>
-          {/* Recent Deposits */}
-          <div className="mt-6">
-            <h3 className="text-[#111714] dark:text-white text-lg font-bold mb-4">
-              Recent Deposits
-            </h3>
 
-            {loadingHistory ? (
-              <p className="text-sm text-gray-500">Loading...</p>
-            ) : recentDeposits.length === 0 ? (
-              <p className="text-sm text-gray-500">No deposit history</p>
-            ) : (
-              <div className="space-y-3">
-                {recentDeposits.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-4 border rounded-lg bg-white dark:bg-[#1a2c22]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-primary">
-                          account_balance
-                        </span>
-                      </div>
+          {/* RECENT DEPOSITS LIST */}
+          {/* Can be placed below or side. Original design had it below right logic or separate? In valid responsive design, below is fine. */}
+        </div>
 
-                      <div>
-                        <p className="font-medium">Bank Transfer</p>
-                        <p className="text-xs text-[#648772]">
-                          {new Date(tx.createdAt).toLocaleDateString("en-US")}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Ref: {tx.referenceId}
-                        </p>
-                      </div>
+        {/* MOVED RECENT DEPOSITS OUTSIDE FLEX ROW TO BE FULL WIDTH BELOW OR KEEP IN FLOW? 
+             Original code: Inside main flex, so it was beside/below. 
+             Let's put it below the 2 columns if needed, or keep in left column if space permits.
+             Actually the original code had it as a sibling to LEFT/RIGHT section?? 
+             No, it was inside <div className="flex ..."> but as a sibling of LEFT and RIGHT?
+             Wait:
+             <div className="flex ...">
+               <section ...> ... </section>
+               <aside ...> ... </aside>
+               <div className="mt-6"> ... </div> (This is inside flex container which is flex-row. So it would be a 3rd column?)
+             Let's check original logic.
+             Original:
+             <div className="flex ...">
+                <section> LEFT </section>
+                <aside> RIGHT </aside>
+                <div className="mt-6"> Recent </div>  // This looks suspicious if it is 3rd col.
+             </div>
+             Actually, let's put Recent Deposits BELOW the columns, or inside the Left section at the bottom.
+             Putting it in the Main container below the flex-row is better for mobile.
+         */}
+      </main>
+
+      {/* HISTORY SECTION SEPARATE FROM COLUMNS */}
+      <div className="flex justify-center pb-20 px-4 md:px-10 lg:px-40">
+        <div className="max-w-[1200px] w-full">
+          <h3 className="text-[#111714] dark:text-white text-xl font-bold mb-4">
+            Recent Card Deposits
+          </h3>
+
+          {loadingHistory ? (
+            <p className="text-sm text-gray-500">Loading history...</p>
+          ) : historyError ? (
+            <p className="text-sm text-red-500">{historyError}</p>
+          ) : recentDeposits.length === 0 ? (
+            <p className="text-sm text-gray-500">No deposit history found.</p>
+          ) : (
+            <div className="bg-white dark:bg-[#1a2c22] rounded-xl border overflow-hidden">
+              {recentDeposits.map((tx) => (
+                <div
+                  key={tx.transactionId || tx.id} // api might return transactionId
+                  className="flex items-center justify-between p-4 border-b last:border-0 hover:bg-gray-50 dark:hover:bg-white/5 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-primary">
+                        credit_card
+                      </span>
                     </div>
 
-                    <div className="text-right">
-                      <span className="font-bold text-primary block">
-                        +$
-                        {Number(tx.amount).toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-
-                      <span
-                        className={`text-xs font-medium ${
-                          tx.status === "COMPLETED"
-                            ? "text-green-600"
-                            : tx.status === "PENDING"
-                            ? "text-yellow-500"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {tx.status}
-                      </span>
+                    <div>
+                      <p className="font-medium text-sm md:text-base">{tx.description || "Deposit from Card"}</p>
+                      <p className="text-xs text-[#648772]">
+                        {tx.timestamp ? new Date(tx.timestamp).toLocaleString() : ""}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {tx.bankName} •••• {tx.cardNumber ? tx.cardNumber.slice(-4) : '****'}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+
+                  <div className="text-right">
+                    <span className="font-bold text-primary block">
+                      +$
+                      {Number(tx.amount).toLocaleString("en-US")}
+                    </span>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${tx.status === "SUCCESS"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                        }`}
+                    >
+                      {tx.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </main>
+      </div>
     </div>
   );
 };

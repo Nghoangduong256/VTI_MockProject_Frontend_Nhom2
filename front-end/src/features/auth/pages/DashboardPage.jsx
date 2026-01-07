@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../../components/Sidebar";
-import userService from "../services/profile/userService";
+import userService from "../../../services/userService";
 import walletService from "../../../services/walletService";
 import cardService from "../../../services/cardService";
 import contactService from "../../../services/contactService";
@@ -23,6 +23,9 @@ export default function DashboardPage() {
     const [transferAmount, setTransferAmount] = useState("");
     const [selectedContact, setSelectedContact] = useState(null);
 
+    const [walletSummary, setWalletSummary] = useState({ income: 0, expense: 0 });
+    const [spendingData, setSpendingData] = useState([]);
+
     // New State for Modals
     const [showAddCardModal, setShowAddCardModal] = useState(false);
     const [showTopupModal, setShowTopupModal] = useState(false);
@@ -39,31 +42,96 @@ export default function DashboardPage() {
         sourceCardId: ""
     });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [profileRes, walletRes, cardsRes, contactsRes, txRes] = await Promise.all([
-                    userService.getProfile(),
-                    walletService.getBalance(),
-                    cardService.getCards(),
-                    contactService.getFrequentContacts(),
-                    transactionService.getTransactions(0, 5) // Get latest 5
-                ]);
+    // Helper to refresh data
+    const refreshData = async () => {
+        try {
+            console.log("Fetching dashboard data...");
+            // Use Promise.allSettled to prevent one failure from blocking all data
+            const results = await Promise.allSettled([
+                userService.getCurrentUser(),
+                walletService.getBalance(),
+                cardService.getCards(),
+                contactService.getFrequentContacts(),
+                transactionService.getTransactions(0, 5),
+                walletService.getWalletSummary(),
+                transactionService.getSpendingAnalytics()
+            ]);
 
-                setProfile(profileRes);
-                setWallet(walletRes);
-                setCards(cardsRes);
-                setContacts(contactsRes);
-                setTransactions(txRes.content || []);
-            } catch (error) {
-                console.error("Error fetching dashboard data:", error);
-                // Optionally handle error state
-            } finally {
-                setLoading(false);
+            // Destructure results
+            const [
+                currentUserResult,
+                balanceStatsResult,
+                cardsResult,
+                contactsResult,
+                txResult,
+                summaryResult,
+                analyticsResult
+            ] = results;
+
+            // Log errors for debugging
+            results.forEach((res, index) => {
+                if (res.status === 'rejected') {
+                    console.error(`API call ${index} failed:`, res.reason);
+                }
+            });
+
+            // Process User & Wallet
+            if (currentUserResult.status === 'fulfilled') {
+                const currentUser = currentUserResult.value;
+                setProfile(currentUser);
+
+                let mergedWallet = { ...currentUser.wallet };
+
+                // Merge Balance Stats if available
+                if (balanceStatsResult.status === 'fulfilled') {
+                    const balanceStats = balanceStatsResult.value;
+                    mergedWallet.monthlyChangePercent = balanceStats.monthlyChangePercent;
+                    if (balanceStats.balance !== undefined && balanceStats.balance !== null) {
+                        mergedWallet.balance = balanceStats.balance;
+                    }
+                }
+                console.log("Final Merged Wallet:", mergedWallet);
+                setWallet(mergedWallet);
             }
-        };
 
-        fetchData();
+            // Process Cards
+            if (cardsResult.status === 'fulfilled') {
+                setCards(cardsResult.value);
+            } else {
+                console.warn("Cards failed to load");
+            }
+
+            // Process Contacts
+            if (contactsResult.status === 'fulfilled') {
+                setContacts(contactsResult.value);
+            }
+
+            // Process Transactions
+            if (txResult.status === 'fulfilled') {
+                setTransactions(txResult.value.content || []);
+            }
+
+            // Process Summary
+            if (summaryResult.status === 'fulfilled') {
+                setWalletSummary(summaryResult.value);
+            }
+
+            // Process Analytics
+            if (analyticsResult.status === 'fulfilled') {
+                setSpendingData(analyticsResult.value);
+            }
+
+        } catch (error) {
+            console.error("Critical error in refreshData:", error);
+        }
+    };
+
+    useEffect(() => {
+        const init = async () => {
+            await refreshData();
+            setLoading(false);
+        };
+        init();
     }, []);
 
     const handleLogout = () => {
@@ -90,13 +158,8 @@ export default function DashboardPage() {
             alert("Transfer successful!");
             setTransferAmount("");
             setSelectedContact(null);
-            // Refresh balance and transactions
-            const [walletRes, txRes] = await Promise.all([
-                walletService.getBalance(),
-                transactionService.getTransactions(0, 5)
-            ]);
-            setWallet(walletRes);
-            setTransactions(txRes.content || []);
+            // Refresh data
+            await refreshData();
         } catch (error) {
             console.error("Transfer failed:", error);
             alert("Transfer failed: " + (error.response?.data?.message || error.message));
@@ -110,6 +173,8 @@ export default function DashboardPage() {
             alert("Card added successfully!");
             setShowAddCardModal(false);
             setNewCard({ cardNumber: "", holderName: "", expiryDate: "", cvv: "", type: "Debit", bankName: "" });
+
+            // Refresh cards list
             const cardsRes = await cardService.getCards();
             setCards(cardsRes);
         } catch (error) {
@@ -125,20 +190,23 @@ export default function DashboardPage() {
             return;
         }
         try {
-            await transactionService.deposit({
-                type: 'topup',
+            // Updated to use cardService.depositFromCard as per API requirement
+            const res = await cardService.depositFromCard({
+                cardId: topupData.sourceCardId,
                 amount: parseFloat(topupData.amount),
-                sourceCardId: topupData.sourceCardId
+                description: "Topup from Dashboard"
             });
+
+            if (res.status === 'FAILED' || res.status === 'ERROR') {
+                throw new Error(res.message || "Transaction failed");
+            }
+
             alert("Topup successful!");
             setShowTopupModal(false);
             setTopupData({ amount: "", sourceCardId: "" });
-            const [walletRes, txRes] = await Promise.all([
-                walletService.getBalance(),
-                transactionService.getTransactions(0, 5)
-            ]);
-            setWallet(walletRes);
-            setTransactions(txRes.content || []);
+
+            // Refresh data
+            await refreshData();
         } catch (error) {
             console.error("Topup failed:", error);
             alert("Failed to topup: " + (error.response?.data?.message || error.message));
@@ -251,11 +319,15 @@ export default function DashboardPage() {
                                 <div className="flex gap-4">
                                     <div className="flex-1 bg-white/20 backdrop-blur-sm rounded-lg p-4">
                                         <p className="text-xs opacity-80 mb-1">Income</p>
-                                        <p className="text-lg font-semibold">+$12,340</p>
+                                        <p className="text-lg font-semibold text-white">+$
+                                            {walletSummary.income?.toLocaleString() || '0'}
+                                        </p>
                                     </div>
                                     <div className="flex-1 bg-white/20 backdrop-blur-sm rounded-lg p-4">
                                         <p className="text-xs opacity-80 mb-1">Expense</p>
-                                        <p className="text-lg font-semibold">-$5,670</p>
+                                        <p className="text-lg font-semibold text-white">-$
+                                            {walletSummary.expense?.toLocaleString() || '0'}
+                                        </p>
                                     </div>
                                     <button onClick={() => setShowTopupModal(true)} className="flex-1 bg-white/20 hover:bg-white/30 transition-colors backdrop-blur-sm rounded-lg p-4 flex flex-col justify-center items-center gap-1 group">
                                         <span className="material-symbols-outlined group-hover:scale-110 transition-transform">add_card</span>
@@ -279,17 +351,20 @@ export default function DashboardPage() {
                                     </select>
                                 </div>
                                 <div className="h-64 flex items-end justify-around gap-2">
-                                    {[65, 45, 80, 55, 90, 70, 60].map((height, i) => (
+                                    {spendingData.length > 0 ? spendingData.map((item, i) => (
                                         <div key={i} className="flex-1 flex flex-col items-center gap-2">
                                             <div
                                                 className="w-full bg-gradient-to-t from-primary to-primary/50 rounded-t-lg hover:from-primary/80 hover:to-primary/40 transition-all cursor-pointer"
-                                                style={{ height: `${height}%` }}
+                                                style={{ height: `${item.value}%` }} // Simplified, assuming value is % or scaled
+                                                title={`$${item.value}`}
                                             ></div>
                                             <span className="text-xs text-text-sub dark:text-gray-400">
-                                                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}
+                                                {item.label}
                                             </span>
                                         </div>
-                                    ))}
+                                    )) : (
+                                        <p className="text-gray-400 w-full text-center">No analytics data</p>
+                                    )}
                                 </div>
                             </div>
 
