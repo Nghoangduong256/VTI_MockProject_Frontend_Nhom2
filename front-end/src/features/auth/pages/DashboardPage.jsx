@@ -258,7 +258,7 @@ export default function DashboardPage() {
                     {/* Header */}
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-text-main dark:text-white mb-1">Welcome back, {profile?.fullName?.split(' ')[0] || 'User'}! 👋</h1>
+                            <h1 className="text-3xl font-bold text-text-main dark:text-white mb-1">Welcome back, {profile?.fullName?.split(' ')[profile?.fullName?.split(' ').length - 1] || 'User'}! 👋</h1>
                             <p className="text-text-sub dark:text-gray-400">Here's what's happening with your account today</p>
                         </div>
                         <div className="flex items-center gap-4">

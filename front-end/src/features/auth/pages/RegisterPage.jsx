@@ -201,6 +201,7 @@ export default function RegisterPage() {
                   className={inputClass("password")}
                   value={passwordHash}
                   onChange={(e) => setPassWord(e.target.value)}
+                  autoComplete="new-password"
                 />
                 {errors.password && (
                   <p className="text-red-500 text-sm mt-1">{errors.password}</p>
@@ -240,9 +241,53 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Right Side */}
-      <div className="hidden md:flex flex-1 items-center justify-center bg-[#e8f5e9] dark:bg-[#1a3324]">
-        <h3 className="text-3xl font-bold">Financial Freedom Starts Here</h3>
+      {/* Right Side: Hero Visual */}
+      <div className="hidden md:flex flex-1 relative bg-[#e8f5e9] dark:bg-[#1a3324] items-center justify-center p-12 overflow-hidden">
+        {/* Abstract background pattern */}
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: "radial-gradient(#36e27b 1px, transparent 1px)", backgroundSize: "32px 32px" }}></div>
+        <div className="absolute top-10 right-10 size-64 bg-primary/20 rounded-full blur-[80px]"></div>
+        <div className="absolute bottom-10 left-10 size-80 bg-blue-400/20 rounded-full blur-[100px]"></div>
+        <div className="relative z-10 max-w-lg text-center">
+          {/* 3D Card Illustration Placeholder */}
+          <div className="relative w-full aspect-square max-w-[500px] mx-auto mb-10 group perspective-1000">
+            <div
+              className="w-full h-full bg-cover bg-center rounded-2xl shadow-2xl transition-transform duration-700 hover:rotate-y-6 hover:rotate-x-6"
+              style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDvBOIl8CzG6CZnaRsOLHWeZiPXznjzpiKb_3Ew7_3cHEzGIQo3auFzXPhNwx55XQSnwNRYA1jtm2zdW8WhM_88EwOzqTweUwjKsf1-jnbjBNilQn87IAdlZyRjT_7jEykrAbtm331GVTBFnqOhCIlbEaJfKibDsm98mkL7KxW11uqZl_g4DJRlgV87EyaR2p5HCkFzesyT0PDn1e_IrESLi0B8GjShw6J6dOD_se89iZ-Uz799ANRBczRSgw0H4gZTgCllm1OEIaNn')" }}
+            >
+              {/* Overlay gradient for text readability if needed */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-2xl"></div>
+              {/* Floating Badge */}
+              <div className="absolute -bottom-6 -right-6 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl flex items-center gap-3 animate-bounce" style={{ animationDuration: '3s' }}>
+                <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
+                  <span className="material-symbols-outlined text-green-600 dark:text-green-400">shield_lock</span>
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase">Security</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Bank-Grade</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <h3 className="text-3xl font-bold text-text-dark dark:text-white mb-4">Financial Freedom Starts Here</h3>
+          <p className="text-lg text-gray-600 dark:text-gray-300 font-medium leading-relaxed">
+            Experience the fastest, most secure way to send, spend, and save money globally. No hidden fees.
+          </p>
+          {/* Feature Pills */}
+          <div className="flex flex-wrap justify-center gap-3 mt-8">
+            <span className="px-4 py-2 bg-white/60 dark:bg-black/20 backdrop-blur-sm rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 border border-white/50 dark:border-white/10 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[18px]">bolt</span>
+              Instant Transfers
+            </span>
+            <span className="px-4 py-2 bg-white/60 dark:bg-black/20 backdrop-blur-sm rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 border border-white/50 dark:border-white/10 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[18px]">public</span>
+              Global Access
+            </span>
+            <span className="px-4 py-2 bg-white/60 dark:bg-black/20 backdrop-blur-sm rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 border border-white/50 dark:border-white/10 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[18px]">savings</span>
+              Smart Savings
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

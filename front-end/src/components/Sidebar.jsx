@@ -60,7 +60,7 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
                         <img
                             src={resolveAvatarSrc(profile?.avatarUrl || profile?.avatar || user?.avatar)}
                             alt="avatar"
-                            className="w-12 h-12 rounded-full object-cover border"
+                            className="w-16 h-16 rounded-full object-cover border"
                         />
 
                     </div>

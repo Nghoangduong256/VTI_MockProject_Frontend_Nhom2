@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
-import Header from "../components/Header";
-// import Sidebar from "../../../components/Sidebar";
-import userService from "../../../services/userService";
-import { data } from "react-router-dom";
-import Sidebar_bkup from "../components/Sidebar_bkup";
 import Sidebar from "../../../components/Sidebar";
+import userService from "../../../services/userService";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -30,7 +26,6 @@ export default function ProfilePage() {
       try {
         const data = await userService.getProfile();
         console.log("Avatar from API:", data.avatarUrl || data.avatar);
-
 
         setUser(data);
         setAvatar(normalizeAvatar(data.avatarUrl || data.avatar));
@@ -151,172 +146,167 @@ export default function ProfilePage() {
   if (!user) return <div>Loading...</div>;
 
   return (
-    <>
-      <Header />
+    // ĐÃ XÓA <Header /> ở đây
+    <div className="flex min-h-screen bg-gray-50"> {/* Thay đổi từ min-h-[calc(100vh-64px)] thành min-h-screen */}
+      <Sidebar activeRoute="profile" />
 
-      <div className="flex min-h-[calc(100vh-64px)] bg-gray-50">
-        {/* <Sidebar_bkup user={user} active="Profile" /> */}
-        <Sidebar activeRoute="profile" />
+      <main className="flex-1 flex justify-center">
+        <div className="w-full max-w-[1440px] p-6">
 
+          {/* PAGE TITLE */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Personal Information</h1>
+            <p className="text-[#648772]">
+              Manage your personal information and account security.
+            </p>
+          </div>
 
-        <main className="flex-1 flex justify-center">
-          <div className="w-full max-w-[1440px] p-6">
+          {/* PROFILE HEADER */}
+          <div className="bg-white rounded-2xl p-6 mb-8 border shadow-sm flex justify-between items-center">
+            <div className="flex items-center gap-6">
+              {/* AVATAR */}
+              <div className="relative">
+                <img
+                  src={avatar || "/default-avatar.png"}
+                  alt="avatar"
+                  className="w-20 h-20 rounded-full object-cover border"
+                />
 
-            {/* PAGE TITLE */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold mb-2">Personal Information</h1>
-              <p className="text-[#648772]">
-                Manage your personal information and account security.
-              </p>
-            </div>
+                {user.verified && (
+                  <span className="absolute bottom-0 right-0 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                    ✓
+                  </span>
+                )}
 
-            {/* PROFILE HEADER */}
-            <div className="bg-white rounded-2xl p-6 mb-8 border shadow-sm flex justify-between items-center">
-              <div className="flex items-center gap-6">
-                {/* AVATAR */}
-                <div className="relative">
-                  <img
-                    src={avatar || "/default-avatar.png"}
-                    alt="avatar"
-                    className="w-20 h-20 rounded-full object-cover border"
-                  />
+                {isEditing && (
+                  <label className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer opacity-0 hover:opacity-100 transition">
+                    <span className="text-white text-sm">Edit</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                  </label>
+                )}
+              </div>
 
+              {/* NAME + BADGES */}
+              <div>
+                <h2 className="text-2xl font-bold">
+                  {user.userName}
+                </h2>
+
+                <div className="flex gap-2 mt-1">
                   {user.verified && (
-                    <span className="absolute bottom-0 right-0 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                      ✓
+                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
+                      Verified
                     </span>
                   )}
-
-                  {isEditing && (
-                    <label className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer opacity-0 hover:opacity-100 transition">
-                      <span className="text-white text-sm">Edit</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleAvatarChange}
-                      />
-                    </label>
+                  {user.membership && (
+                    <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+                      {user.membership}
+                    </span>
                   )}
                 </div>
 
-                {/* NAME + BADGES */}
-                <div>
-                  <h2 className="text-2xl font-bold">
-                    {user.userName}
-                  </h2>
-
-                  <div className="flex gap-2 mt-1">
-                    {user.verified && (
-                      <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
-                        Verified
-                      </span>
-                    )}
-                    {user.membership && (
-                      <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
-                        {user.membership}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-[#648772] mt-2">
-                    Update your photo and personal details here.
-                  </p>
-                </div>
+                <p className="text-sm text-[#648772] mt-2">
+                  Update your photo and personal details here.
+                </p>
               </div>
-
-              {/* ACTION BUTTON */}
-              <button
-                disabled={isEditing}
-                onClick={handleUpdateProfile}
-                className={`px-4 py-2 rounded-lg font-semibold
-                ${isEditing
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-gray-200 hover:bg-gray-300"
-                  }`}
-              >
-                Update profile
-              </button>
             </div>
 
-            {/* PROFILE FORM */}
-            <form
-              onSubmit={handleSave}
-              className="bg-white rounded-2xl p-6 border shadow-sm flex flex-col gap-6"
+            {/* ACTION BUTTON */}
+            <button
+              disabled={isEditing}
+              onClick={handleUpdateProfile}
+              className={`px-4 py-2 rounded-lg font-semibold
+              ${isEditing
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-gray-200 hover:bg-gray-300"
+                }`}
             >
-              <div className="flex gap-6">
-                <Input
-                  label="First Name"
-                  name="firstName"
-                  value={form.firstName}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-                <Input
-                  label="Last Name"
-                  name="lastName"
-                  value={form.lastName}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="flex gap-6">
-                <Input
-                  label="Email"
-                  name="email"
-                  value={form.email}
-                  disabled
-                />
-                <Input
-                  label="Phone"
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="flex gap-6">
-                <Input
-                  label="Date of Birth"
-                  type="date"
-                  name="dateOfBirth"
-                  value={form.dateOfBirth}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-                <Input
-                  label="Address"
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              {isEditing && (
-                <div className="flex justify-end gap-4 pt-6 border-t">
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="px-6 py-2 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2 rounded-lg bg-primary font-semibold"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              )}
-            </form>
+              Update profile
+            </button>
           </div>
-        </main>
-      </div>
-    </>
+
+          {/* PROFILE FORM */}
+          <form
+            onSubmit={handleSave}
+            className="bg-white rounded-2xl p-6 border shadow-sm flex flex-col gap-6"
+          >
+            <div className="flex gap-6">
+              <Input
+                label="First Name"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+              <Input
+                label="Last Name"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div className="flex gap-6">
+              <Input
+                label="Email"
+                name="email"
+                value={form.email}
+                disabled
+              />
+              <Input
+                label="Phone"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div className="flex gap-6">
+              <Input
+                label="Date of Birth"
+                type="date"
+                name="dateOfBirth"
+                value={form.dateOfBirth}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+              <Input
+                label="Address"
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+            </div>
+
+            {isEditing && (
+              <div className="flex justify-end gap-4 pt-6 border-t">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-6 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 rounded-lg bg-primary font-semibold"
+                >
+                  Save Changes
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -351,4 +341,3 @@ function normalizeAvatar(base64) {
   // base64 thuần → thêm prefix
   return `data:image/png;base64,${base64}`;
 }
-
