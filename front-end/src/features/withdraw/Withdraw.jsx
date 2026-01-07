@@ -1,50 +1,41 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { formatVND, formatDateRangeFromNow } from "./utils";
 
-import walletService from "../../services/walletService"
+import userService from "../../services/userService";
+import cardService from "../../services/cardService";
+
 
 // WithdrawPage.jsx
 export default function Withdraw() {
-  const profileImageUrl =
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuA635xw_wV_WH17wTeYV52OX0PrpPGeE4wnBFdf0-HxVILVOR9YvK1EjEt5Zny0XgxY7mZz4jxWtnhueAKL_uZEzlQURhlZbSTcjMy2W41qb5ofVleNRMHWGNbWue2vM6mwM5iTiVPb8uHngCOs4wmVPYuelfBnBJ_3QXRDR9ysbgbG2onE1zWE12uO72mVQ2pxgC9Hk2BUkIGrhsh6V1VZacxU7cZzPMtfqNXCeg-Dig9xIjcLE2hDwybUfhLukkvUHbWrmvyhHRTF";
-
+  
   const token = localStorage.getItem("token");
-  const [bankAccounts, setBankAccounts] = useState(null);
+  const [cards, setCards] = useState(null);
   const [user, setUser] = useState(null);
   const [withdrawAmount, setWithdrawAmount] = useState(100000);
   const [selectedAccount, setSelectedAccount] = useState(null);
+
+  const navigate = useNavigate();
+
   useEffect(() => {
-    fetch("http://localhost:8080/api/me", {
-      method: "GET", // hoặc POST, PUT, DELETE
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
-        setUser(data);
-      });
-    fetch("http://localhost:8080/api/bank-account?userId=1", {
-      method: "GET", // hoặc POST, PUT, DELETE
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Bank account data:", data);
-        setBankAccounts(data);
-      });
+    const fetchData = async () => {
+      const userData = await userService.getCurrentUser();
+      console.log(userData);
+      setUser(userData);
+
+      const cardsData = await cardService.getCards();
+      setCards(cardsData);
+    };
+    fetchData();
   }, []);
+
+
   function handleWithdrawAmountChange(e) {
     if (e.target.value < 0 || e.target.value > user?.wallet.availableBalance)
       return;
-
     setWithdrawAmount(e.target.value);
   }
+  
   function confirmWithdraw() {
     if (!selectedAccount) {
       alert("Please select a bank account to withdraw to.");
@@ -88,75 +79,19 @@ export default function Withdraw() {
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden">
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-10 py-4 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="size-8 text-primary">
-            <svg
-              className="w-full h-full"
-              fill="none"
-              viewBox="0 0 48 48"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z"
-                fill="currentColor"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">
-            E-Wallet
-          </h2>
-        </div>
-
-        <div className="hidden md:flex flex-1 justify-center gap-8">
-          <nav className="flex items-center gap-9">
-            <a
-              className="text-sm font-medium leading-normal hover:text-primary transition-colors"
-              href="/dashboard"
-            >
-              Dashboard
-            </a>
-            <a
-              className="text-sm font-medium leading-normal text-primary"
-              href="/transactions"
-            >
-              Transactions
-            </a>
-            <a
-              className="text-sm font-medium leading-normal hover:text-primary transition-colors"
-              href="/cards"
-            >
-              Cards
-            </a>
-            <a
-              className="text-sm font-medium leading-normal hover:text-primary transition-colors"
-              href="/settings"
-            >
-              Settings
-            </a>
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-6">
-          <div className="hidden md:flex flex-col items-end">
-            <span className="text-sm font-bold">{user?.fullName}</span>
-            <span className="text-xs text-text-sub-light dark:text-text-sub-dark">
-              Wallet ID: {user?.wallet.code}
-            </span>
-          </div>
-
-          <div
-            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-primary/20"
-            aria-label="User profile picture showing a smiling person"
-            style={{ backgroundImage: `url("${profileImageUrl}")` }}
-          />
-
-          <button
-            type="button"
-            className="flex items-center justify-center p-2 rounded-lg hover:bg-background-light dark:hover:bg-background-dark text-text-sub-light dark:text-text-sub-dark transition-colors"
-          >
-            <span className="material-symbols-outlined">logout</span>
-          </button>
-        </div>
+       <div>
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="flex items-center gap-2 text-[#648772] hover:text-primary transition-colors mb-4"
+              >
+                <span className="material-symbols-outlined">arrow_back</span>
+                <span className="font-medium">Back to Dashboard</span>
+              </button>
+              <h1 className="text-4xl font-black">Deposit Funds</h1>
+              <p className="text-[#648772]">
+                Select a card and enter amount to deposit into your wallet.
+              </p>
+            </div>
       </header>
 
       <main className="flex-grow flex flex-col items-center justify-start pt-10 pb-20 px-4 md:px-10">
@@ -192,12 +127,12 @@ export default function Withdraw() {
                 </label>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {bankAccounts &&
-                    bankAccounts.map((account) => (
+                  {cards &&
+                    cards.map((card) => (
                       <label
                         className="cursor-pointer relative"
-                        key={account.id}
-                        onClick={() => setSelectedAccount(account.id)}
+                        key={card.id}
+                        onClick={() => setSelectedAccount(card.id)}
                       >
                         <input
                           className="peer sr-only"
@@ -212,11 +147,11 @@ export default function Withdraw() {
                           </div>
                           <div className="flex flex-col">
                             <span className="font-bold text-sm">
-                              {account.bankName}
+                              {card.bankName}
                             </span>
-                            {/* <span className="font-bold text-sm">{account.accountName}</span> */}
+                            {/* <span className="font-bold text-sm">{card.accountName}</span> */}
                             <span className="text-xs text-text-sub-light dark:text-text-sub-dark">
-                              {account.accountNumber}
+                              {card.cardNumber}
                             </span>
                           </div>
                           <div className="ml-auto text-primary opacity-0 peer-checked:opacity-100">
@@ -233,9 +168,7 @@ export default function Withdraw() {
                     className="flex items-center justify-center gap-2 p-4 rounded-lg border border-dashed border-border-light dark:border-border-dark text-text-sub-light dark:text-text-sub-dark hover:text-primary hover:border-primary transition-colors"
                   >
                     <span className="material-symbols-outlined">add</span>
-                    <span className="text-sm font-medium">
-                      Link New Account
-                    </span>
+                    <span className="text-sm font-medium">Link New Card</span>
                   </button>
                 </div>
               </div>
@@ -259,7 +192,7 @@ export default function Withdraw() {
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <span className="text-text-sub-light dark:text-text-sub-dark font-bold text-lg">
-                      ₫
+                      $
                     </span>
                   </div>
 
@@ -282,7 +215,7 @@ export default function Withdraw() {
                       className="text-sm font-medium leading-normal"
                       onClick={(e) => setWithdrawAmount(50000)}
                     >
-                      50.000 ₫
+                      50.000 $
                     </p>
                   </button>
 
@@ -294,7 +227,7 @@ export default function Withdraw() {
                       className="text-sm leading-normal"
                       onClick={(e) => setWithdrawAmount(500000)}
                     >
-                      500.000 ₫
+                      500.000 $
                     </p>
                   </button>
 
@@ -306,7 +239,7 @@ export default function Withdraw() {
                       className="text-sm font-medium leading-normal"
                       onClick={(e) => setWithdrawAmount(1000000)}
                     >
-                      1.000.000 ₫
+                      1.000.000 $
                     </p>
                   </button>
 

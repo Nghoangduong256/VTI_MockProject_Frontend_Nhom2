@@ -1,7 +1,7 @@
 export const formatVND = (value) =>
-  new Intl.NumberFormat("vi-VN", {
+  new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "VND",
+    currency: "USD",
   }).format(value);
 
   export function formatDateRangeFromNow(days = 2) {
