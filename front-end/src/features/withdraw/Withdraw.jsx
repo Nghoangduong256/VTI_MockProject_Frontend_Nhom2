@@ -12,7 +12,7 @@ export default function Withdraw() {
   const token = localStorage.getItem("token");
   const [cards, setCards] = useState(null);
   const [user, setUser] = useState(null);
-  const [withdrawAmount, setWithdrawAmount] = useState(100000);
+  const [withdrawAmount, setWithdrawAmount] = useState(0);
   const [selectedAccount, setSelectedAccount] = useState(null);
 
   const navigate = useNavigate();
@@ -35,10 +35,20 @@ export default function Withdraw() {
       return;
     setWithdrawAmount(e.target.value);
   }
+
+  function handleWithdrawAvailalbeMax(amount) {
+    if (amount < 0 || amount > user?.wallet.availableBalance)
+      return;
+    setWithdrawAmount(amount);
+  }
   
   function confirmWithdraw() {
     if (!selectedAccount) {
       alert("Please select a bank account to withdraw to.");
+      return;
+    }
+    if (withdrawAmount * 1.005 > user?.wallet.availableBalance) {
+      alert("Please enter a valid withdraw amount.");
       return;
     }
     // alert(`Withdrawing ${formatVND(withdrawAmount)} to account ID ${selectedAccount}`);
@@ -213,7 +223,7 @@ export default function Withdraw() {
                   >
                     <p
                       className="text-sm font-medium leading-normal"
-                      onClick={(e) => setWithdrawAmount(50000)}
+                      onClick={(e) => handleWithdrawAvailalbeMax(50000)}
                     >
                       50.000 $
                     </p>
@@ -225,7 +235,7 @@ export default function Withdraw() {
                   >
                     <p
                       className="text-sm leading-normal"
-                      onClick={(e) => setWithdrawAmount(500000)}
+                      onClick={(e) => handleWithdrawAvailalbeMax(500000)}
                     >
                       500.000 $
                     </p>
@@ -237,7 +247,7 @@ export default function Withdraw() {
                   >
                     <p
                       className="text-sm font-medium leading-normal"
-                      onClick={(e) => setWithdrawAmount(1000000)}
+                      onClick={(e) => handleWithdrawAvailalbeMax(1000000)}
                     >
                       1.000.000 $
                     </p>
