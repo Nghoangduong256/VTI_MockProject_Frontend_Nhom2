@@ -19,7 +19,15 @@ export default function ReceiveMoneyPage() {
     // Modal states
     const [showAmountModal, setShowAmountModal] = useState(false);
     const [customAmount, setCustomAmount] = useState("");
+    const resolveAvatarSrc = (avatar) => {
+        if (!avatar) return "https://i.pravatar.cc/150?img=12";
 
+        // Nếu đã là data:image thì dùng luôn
+        if (avatar.startsWith("data:image")) return avatar;
+
+        // Nếu là base64 thuần
+        return `data:image/jpeg;base64,${avatar}`;
+    };
     useEffect(() => {
         const fetchData = async () => {
             console.log("🔄 Fetching project data...");
@@ -261,12 +269,12 @@ export default function ReceiveMoneyPage() {
                                         {/* Profile Badge */}
                                         <div className="flex flex-col items-center gap-3 mb-6">
                                             <div className="relative">
-                                                <div
-                                                    className="size-20 bg-cover bg-center rounded-full border-[3px] border-white dark:border-[#1a2c22] shadow-sm"
-                                                    style={{ backgroundImage: `url("${profile?.avatarUrl || 'https://via.placeholder.com/150'}")` }}
-                                                />
-                                                <div className="absolute bottom-0 right-0 p-1 bg-primary rounded-full border-2 border-white dark:border-[#1a2c22] flex items-center justify-center">
-                                                    <span className="material-symbols-outlined text-[14px] font-bold text-[#111714]">check</span>
+                                                <div className="relative">
+                                                    <img
+                                                        src={resolveAvatarSrc(profile?.avatarUrl || profile?.avatar || user?.avatar)}
+                                                        alt="avatar"
+                                                        className="w-16 h-16 rounded-full object-cover border"
+                                                    />
                                                 </div>
                                             </div>
                                             <div className="text-center">
