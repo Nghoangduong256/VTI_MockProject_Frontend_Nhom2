@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { useState, useEffect } from "react";
-import userService from "../features/auth/services/profile/userService";
+import userService from "../services/userService";
 
 export default function Sidebar({ activeRoute = "dashboard" }) {
     const navigate = useNavigate();
@@ -12,6 +12,18 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
     const handleNavigation = (path) => {
         navigate(path);
     };
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const data = await userService.getProfile();
+                setProfile(data);
+            } catch (error) {
+                console.error("Failed to fetch profile for sidebar", error);
+            }
+        };
+        fetchProfile();
+    }, []);
 
     // Resolve Base64
     const resolveAvatarSrc = (avatar) => {
@@ -46,7 +58,7 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
                     {/* Avatar */}
                     <div className="relative">
                         <img
-                            src={resolveAvatarSrc(user?.avatar)}
+                            src={resolveAvatarSrc(profile?.avatarUrl || profile?.avatar || user?.avatar)}
                             alt="avatar"
                             className="w-12 h-12 rounded-full object-cover border"
                         />

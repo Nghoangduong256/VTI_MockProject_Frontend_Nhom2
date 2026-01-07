@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Header from "../components/Header";
 // import Sidebar from "../../../components/Sidebar";
-import { userService } from "../services/profile/userService";
+import userService from "../../../services/userService";
 import { data } from "react-router-dom";
 import Sidebar_bkup from "../components/Sidebar_bkup";
 import Sidebar from "../../../components/Sidebar";
@@ -29,16 +29,26 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
       try {
         const data = await userService.getProfile();
-        console.log("Avatar from API:", data.avatar);
+        console.log("Avatar from API:", data.avatarUrl || data.avatar);
 
 
         setUser(data);
-        setAvatar(normalizeAvatar(data.avatar));
+        setAvatar(normalizeAvatar(data.avatarUrl || data.avatar));
 
+        // Attempt to split fullName if firstName/lastName missing
+        let fName = data.firstName || "";
+        let lName = data.lastName || "";
+        if (!fName && !lName && data.fullName) {
+          const parts = data.fullName.split(' ');
+          if (parts.length > 0) {
+            lName = parts.pop();
+            fName = parts.join(' ');
+          }
+        }
 
         setForm({
-          firstName: data.firstName || "",
-          lastName: data.lastName || "",
+          firstName: fName,
+          lastName: lName,
           email: data.email || "",
           phone: data.phone || "",
           dateOfBirth: data.dateOfBirth || "",
@@ -72,19 +82,31 @@ export default function ProfilePage() {
     e.preventDefault();
 
     try {
-      await userService.updateProfile({
+      // Send fields directly as per updated API spec: { firstName, lastName, ... }
+      const res = await userService.updateProfile({
         firstName: form.firstName,
         lastName: form.lastName,
+        email: form.email,
         phone: form.phone,
         dateOfBirth: form.dateOfBirth,
         address: form.address,
       });
 
+      if (res && (res.status === 'FAILED' || res.status === 'ERROR')) {
+        throw new Error(res.message || "Update profile failed");
+      }
+
       setIsEditing(false);
+
+      // Update local user display immediately
+      // Note: GET /api/user/profile returns fullName, so we might construct it optionally for local display
+      const newFullName = `${form.firstName} ${form.lastName}`.trim();
+      setUser(prev => ({ ...prev, fullName: newFullName, ...form }));
+
       alert("Profile updated successfully");
     } catch (error) {
       console.error("Update profile failed", error);
-      alert("Update failed");
+      alert("Update failed: " + (error.response?.data?.message || error.message || "Unknown error"));
     }
   };
 
@@ -113,9 +135,14 @@ export default function ProfilePage() {
       setAvatar(base64);
 
       try {
-        await userService.updateAvatar(base64);
+        const res = await userService.updateAvatar(base64); // Service now sends { avatarUrl: base64 }
+
+        if (res && (res.status === 'FAILED' || res.status === 'ERROR')) {
+          throw new Error(res.message || "Update avatar failed");
+        }
       } catch (err) {
         console.error("Update avatar failed", err);
+        alert("Update avatar failed: " + (err.message));
       }
     };
     reader.readAsDataURL(file);

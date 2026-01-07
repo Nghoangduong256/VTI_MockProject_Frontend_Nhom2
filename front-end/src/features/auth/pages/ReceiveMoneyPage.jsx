@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../../../components/Sidebar";
-import userService from "../services/profile/userService";
+import userService from "../../../services/userService";
 import walletService from "../../../services/walletService";
 import qrService from "../../../services/qrService";
 import transactionService from "../../../services/transactionService";

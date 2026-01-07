@@ -42,6 +42,21 @@ const transactionService = {
     getIncomingTransactions: async (limit = 5) => {
         const response = await apiClient.get(`/api/transactions/incoming?limit=${limit}`);
         return response.data;
+    },
+
+    /**
+     * Get spending analytics
+     * Endpoint: GET /api/analytics/spending
+     * @param {string} range - '7days', '30days', '90days'
+     */
+    getSpendingAnalytics: async (range = '7days') => {
+        try {
+            const response = await apiClient.get('/api/analytics/spending', { params: { range } });
+            return response.data;
+        } catch (error) {
+            console.warn("API /api/analytics/spending not found, using dummy data");
+            return [];
+        }
     }
 };
 
