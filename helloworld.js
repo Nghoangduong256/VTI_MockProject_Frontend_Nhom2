@@ -1,1 +1,0 @@
-console.log("This is a new function in Frontend Nhom2");

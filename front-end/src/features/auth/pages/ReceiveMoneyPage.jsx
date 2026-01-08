@@ -8,7 +8,7 @@ import transactionService from "../../../services/transactionService";
 
 export default function ReceiveMoneyPage() {
     const [isDark, setIsDark] = useState(false);
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
 
     const [profile, setProfile] = useState(null);
     const [wallet, setWallet] = useState(null);
