@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TransferService from "../../../services/transfer/transferService";
+import walletService from "../../../services/walletService";
+import qrService from "../../../services/qrService";
 
-const WALLET_ID = 1;
+const HISTORY_CACHE_KEY = "transfer_history_cache";
 const PAGE_SIZE = 10;
 
 const STATUS_STYLE = {
@@ -14,87 +16,254 @@ const STATUS_STYLE = {
 export default function TransferHistoryPage() {
     const navigate = useNavigate();
 
+    /* WALLET */
+    const [wallet, setWallet] = useState(null);
+    const walletId = wallet?.id;
+
+    /* HISTORY */
     const [transactions, setTransactions] = useState([]);
     const [direction, setDirection] = useState("ALL");
     const [timeRange, setTimeRange] = useState("30DAYS");
     const [page, setPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
+    const [loadedFromCache, setLoadedFromCache] = useState(false);
 
+
+    /* SEND MONEY */
     const [sending, setSending] = useState(false);
+    const [amount, setAmount] = useState("");
+    const [note, setNote] = useState("");
+    const [targetWallets, setTargetWallets] = useState([]);
+    const [searchPhone, setSearchPhone] = useState("");
+    const [selectedWallet, setSelectedWallet] = useState(null);
+    const [toUserId, setToUserId] = useState(null);
+    const amountNumber = Number(amount);
 
-    const handleSendNow = async () => {
-        const confirmed = window.confirm(
-            "Are you sure you want to send this money?"
-        );
+    /* RECEIVE */
+    const [qrCode, setQrCode] = useState(null);
 
-        if (!confirmed) return;
+    /* LOAD WALLET + QR */
+    useEffect(() => {
+        refreshWallet();
+        qrService.getWalletQR().then(setQrCode);
+    }, []);
 
-        setSending(true);
+    /* Filter time */
+    const mapTimeRangeToFilter = (range) => {
+        if (range === "30DAYS") return "LAST_30_DAYS";
+        if (range === "3MONTHS") return "LAST_MONTH";
+        if (range === "YEAR") return "LAST_YEAR";
+        return null;
+    };
+
+
+    /* FETCH HISTORY */
+    const fetchHistory = async (walletId, page, direction, timeRange) => {
+        try {
+            const params = {
+                page,
+                size: PAGE_SIZE,
+                filter: mapTimeRangeToFilter(timeRange),
+            };
+            if (direction !== "ALL") params.direction = direction;
+
+            const res = await TransferService.getTransferHistory(walletId, params);
+
+            setTransactions(res.content || []);
+            setTotalElements(res.totalElements || 0);
+
+            localStorage.setItem(
+                HISTORY_CACHE_KEY,
+                JSON.stringify({
+                    walletId,
+                    content: res.content || [],
+                    totalElements: res.totalElements || 0,
+                    page,
+                    direction,
+                    timeRange,
+                    cachedAt: Date.now(),
+                })
+            );
+
+        } catch (e) {
+            console.error("Fetch history failed", e);
+        }
+    };
+
+    const refreshWallet = async () => {
+        const walletData = await walletService.getWalletInfo();
+        setWallet({
+            ...walletData,
+            id: walletData.walletId,
+        });
+    };
+
+
+    useEffect(() => {
+        if (!walletId) return;
+
+        const cached = localStorage.getItem(HISTORY_CACHE_KEY);
+        if (!cached) return;
 
         try {
-            await TransferService.sendMoney({
-                fromWalletId: WALLET_ID,
-                toWalletId: 2,
-                amount: 150,
-                note: "Test transfer"
+            const data = JSON.parse(cached);
+            if (data.walletId === walletId && data.content?.length) {
+                setTransactions(data.content);
+                setTotalElements(data.totalElements || 0);
+                setPage(data.page ?? 0);
+                setDirection(data.direction ?? "ALL");
+                setTimeRange(data.timeRange ?? "30DAYS");
+                setLoadedFromCache(true);
+            }
+        } catch (e) {
+            console.error("Cache parse failed", e);
+        }
+    }, [walletId]);
+
+    useEffect(() => {
+        setLoadedFromCache(false);
+    }, [page, direction, timeRange]);
+
+    useEffect(() => {
+        if (!walletId || loadedFromCache) return;
+        fetchHistory(walletId, page, direction, timeRange);
+    }, [walletId, page, direction, timeRange, loadedFromCache]);
+
+    useEffect(() => {
+        if (!walletId || sending) return;
+
+        const i = setInterval(async () => {
+            await fetchHistory(walletId, page, direction, timeRange);
+            await refreshWallet();
+        }, 5000);
+
+        return () => clearInterval(i);
+    }, [walletId, page, direction, timeRange, sending]);
+
+
+    /* SEARCH WALLET BY PHONE */
+    const handleSearchNow = async () => {
+        if (!searchPhone.trim()) {
+            setTargetWallets([]);
+            return;
+        }
+
+        try {
+            const wallets = await TransferService.getTargetWallets(searchPhone.trim());
+
+            if (!Array.isArray(wallets)) {
+                setTargetWallets([]);
+                alert("Unexpected response from server");
+                return;
+            }
+
+            if (wallets.length === 0) {
+                setTargetWallets([]);
+                alert("No wallet found with this phone number");
+                return;
+            }
+
+            setTargetWallets(wallets);
+        } catch (error) {
+            console.error(error);
+            alert("System error. Please try again later.");
+        }
+    };
+
+    const handleSelectWallet = (wallet) => {
+        setSelectedWallet(wallet);
+        setToUserId(wallet.userId);
+        setTargetWallets([]);
+        setSearchPhone("");
+    };
+
+    const resolveAvatarSrc = (avatar) => {
+        if (!avatar) return "https://i.pravatar.cc/150?img=12";
+        if (avatar.startsWith?.("data:image")) return avatar;
+        return `data:image/jpeg;base64,${avatar}`;
+    };
+
+    const handleCopyAddress = () => {
+        if (!wallet?.accountNumber) return;
+        navigator.clipboard.writeText(wallet.accountNumber);
+        alert("Wallet address copied!");
+    };
+
+    const start = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
+    const end = Math.min((page + 1) * PAGE_SIZE, totalElements);
+
+    /* SEND MONEY */
+    const handleSendNow = async () => {
+        if (!walletId || !toUserId || amountNumber <= 0) return;
+
+        try {
+            setSending(true);
+
+            await TransferService.transfer({
+                toUserId,
+                amount: amountNumber,
+                note,
             });
 
-            alert("Money sent successfully!");
-        } catch (e) {
-            console.error("Send money failed", e);
+            /* OPTIMISTIC TX (OUT) */
+            const optimisticTx = {
+                id: `tmp-${Date.now()}`,
+                createdAt: new Date().toISOString(),
+                partnerName: selectedWallet?.fullName || "Transfer",
+                direction: "OUT",
+                amount: amountNumber,
+                status: "COMPLETED",
+                type: "TRANSFER_OUT",
+                note,
+            };
 
-            alert(
-                e?.response?.data?.message ||
-                "Transaction failed. Please try again."
+            setTransactions(prev => [optimisticTx, ...prev]);
+            setTotalElements(prev => prev + 1);
+
+            /* OPTIMISTIC BALANCE */
+            setWallet(prev => ({
+                ...prev,
+                balance: prev.balance - amountNumber,
+            }));
+
+            /* UPDATE CACHE */
+            localStorage.setItem(
+                HISTORY_CACHE_KEY,
+                JSON.stringify({
+                    walletId,
+                    content: [optimisticTx, ...transactions],
+                    totalElements: totalElements + 1,
+                    page: 0,
+                    direction,
+                    timeRange,
+                    cachedAt: Date.now(),
+                })
             );
+
+            /* RESET FORM */
+            setAmount("");
+            setNote("");
+            setSelectedWallet(null);
+            setToUserId(null);
+            setPage(0);
+
+            /* HARD REFRESH DATA */
+            setTimeout(async () => {
+                await refreshWallet();
+                await fetchHistory(walletId, 0, direction, timeRange);
+            }, 800);
+
+        } catch (e) {
+            console.error(e);
+            alert("Transfer failed");
         } finally {
             setSending(false);
         }
     };
 
-
-    /* =============== DATE FILTER =============== */
-    const getDateRange = () => {
-        const now = new Date();
-        let fromDate = new Date();
-
-        if (timeRange === "3MONTHS") {
-            fromDate.setMonth(fromDate.getMonth() - 3);
-        } else if (timeRange === "YEAR") {
-            fromDate = new Date(now.getFullYear(), 0, 1);
-        } else {
-            fromDate.setDate(fromDate.getDate() - 30);
-        }
-
-        return {
-            fromDate: fromDate.toISOString(),
-            toDate: now.toISOString(),
-        };
-    };
-
-    /* =============== API CALL =============== */
-    useEffect(() => {
-        const fetchData = async () => {
-            const { fromDate, toDate } = getDateRange();
-
-            const res = await TransferService.getTransferHistory(WALLET_ID, {
-                page,
-                size: PAGE_SIZE,
-                direction: direction === "ALL" ? undefined : direction,
-                fromDate,
-                toDate,
-            });
-
-            setTransactions(res.data.content);
-            setTotalElements(res.data.totalElements);
-        };
-
-        fetchData();
-    }, [page, direction, timeRange]);
-
     return (
         <div className="dark bg-background-white min-h-screen font-display text-white">
-            {/* ================= TOP NAV ================= */}
+            {/*  TOP NAV  */}
             <header className="sticky top-0 z-50 w-full bg-white backdrop-blur-md border-b border-border-dark pt-8 pb-5">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <section className="flex-1 flex flex-col gap-6">
@@ -111,7 +280,8 @@ export default function TransferHistoryPage() {
                 </div>
             </header>
 
-            {/* ================= MAIN ================= */}
+
+            {/*  MAIN  */}
             <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* PAGE HEADING */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
@@ -133,7 +303,8 @@ export default function TransferHistoryPage() {
                     </div>
                 </div>
 
-                {/* ================= SEND / RECEIVE ================= */}
+
+                {/*  SEND / RECEIVE  */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
                     {/* SEND MONEY PANEL */}
                     <div className="lg:col-span-7 flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
@@ -151,47 +322,68 @@ export default function TransferHistoryPage() {
                             </button>
                         </div>
 
-                        <div className="p-6 md:p-8 flex flex-col gap-6">
-                            {/* Recipient Search */}
-                            <div className="flex flex-col gap-3">
-                                <label className="text-black text-base font-medium">
-                                    Recipient
-                                </label>
-                                <div className="relative group">
-                                    <input
-                                        className="w-full h-14 bg-white border border-gray-300 rounded-xl px-4 pl-12 text-black placeholder:text-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                                        placeholder="Phone, Email, or Wallet ID"
-                                        type="text"
-                                        defaultValue="Jane Doe"
-                                    />
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-black group-focus-within:text-primary transition-colors">
-                                        search
-                                    </span>
-                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-primary">
-                                        check_circle
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Selected Recipient Card */}
-                            <div className="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300 flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div
-                                        className="size-12 rounded-full bg-cover bg-center"
-                                        style={{
-                                            backgroundImage:
-                                                'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDvJFluIjEirtAfVNJghxeYRA9DytYG-Kiz7LSLAwCOZvKr-IBB9ZWEcysA2HFwTRGMnicpInQuETpLj6Q1C4IF8WG7DctoZvJzQf_CGVE18PZF6PlWy2Stnwb-I5R-P7oJ0YDxJW49D-xSuxQhMp7SFF3O0o1eUGxBcH50TK80fNW7IHBsOZ_zw00pzz18YK90-acDO9qolJOUTMD1ZwiiiR9Bct_k4sqOKeHe9XQQfYwqfKDzpacc09iO92NWfNUrrYwncP3gXCrp")',
-                                        }}
-                                    />
+                        <div className="p-6 md:p-8 flex flex-col gap-6">
+                            {/* Select Receiver Wallet */}
+                            <label className="text-black text-base font-medium">
+                                Receiver Wallet
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Enter phone number..."
+                                value={searchPhone}
+                                onChange={(e) => setSearchPhone(e.target.value)}
+                                className="w-full h-14 border border-gray-300 rounded-xl px-4 text-black disabled:bg-gray-100"
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleSearchNow();
+                                    }
+                                }}
+                            />
+                            {selectedWallet && (
+                                <div className="flex items-center justify-between p-3 rounded-xl border bg-green-50">
                                     <div>
-                                        <p className="text-black font-bold text-base">Jane Doe</p>
-                                        <p className="text-gray-600 text-sm">ID: **** 4321</p>
+                                        <div className="text-sm font-medium text-black">
+                                            Receiver: {selectedWallet.fullName}
+                                        </div>
+                                        <div className="text-xs text-gray-600">
+                                            Wallet: **** {selectedWallet.accountNumber.slice(-4)}
+                                        </div>
                                     </div>
+
+
+                                    <button
+                                        className="text-sm text-red-500 underline"
+                                        onClick={() => {
+                                            setSelectedWallet(null);
+                                            setToUserId(null);
+                                            setSearchPhone("");
+                                        }}
+                                    >
+                                        Change
+                                    </button>
                                 </div>
-                                <button className="text-primary text-sm font-medium hover:underline">
-                                    Change
-                                </button>
-                            </div>
+                            )}
+
+                            {targetWallets.length > 0 && (
+                                <div className="border rounded-xl mt-2 bg-white shadow">
+                                    {targetWallets.map(w => (
+                                        <div
+                                            key={w.walletId}
+                                            className="p-3 hover:bg-gray-100 cursor-pointer"
+                                            onClick={() => handleSelectWallet(w)}
+                                        >
+                                            <div className="font-medium text-black">
+                                                {w.fullName}
+                                            </div>
+                                            <div className="text-sm text-gray-500">
+                                                **** {w.accountNumber.slice(-4)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
                             {/* Amount + Note */}
                             <div className="flex flex-col md:flex-row gap-6">
@@ -205,20 +397,23 @@ export default function TransferHistoryPage() {
                                             $
                                         </span>
                                         <input
-                                            className="w-full h-20 bg-white border border-gray-300 rounded-xl pl-10 pr-4 text-4xl md:text-5xl font-bold text-black placeholder:text-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                                            placeholder="0.00"
                                             type="number"
-                                            defaultValue="150.00"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            className="w-full h-20 bg-white border border-gray-300 rounded-xl pl-10 pr-4 text-4xl font-bold text-black"
+                                            placeholder="0.00"
                                         />
                                     </div>
                                     <p className="text-black text-sm flex items-center gap-1">
                                         <span className="material-symbols-outlined text-base">
                                             account_balance_wallet
                                         </span>
-                                        Balance:
-                                        <span className="text-black font-medium">$4,250.80</span>
+                                        <span className="text-black font-medium">
+                                            Balance: ${wallet?.balance?.toLocaleString() ?? "—"}
+                                        </span>
                                     </p>
                                 </div>
+
 
                                 {/* Note */}
                                 <div className="flex-1 flex flex-col gap-3 text-black">
@@ -226,69 +421,127 @@ export default function TransferHistoryPage() {
                                         Note <span className="font-normal">(Optional)</span>
                                     </label>
                                     <textarea
-                                        className="w-full h-20 md:h-[108px] bg-white border border-gray-300 rounded-xl p-4 text-black placeholder:text-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none transition-all"
+                                        value={note}
+                                        onChange={(e) => setNote(e.target.value)}
+                                        className="w-full h-20 bg-white border border-gray-300 rounded-xl p-4 text-black resize-none"
                                         placeholder="What is this for?"
                                     />
                                 </div>
                             </div>
 
+
                             {/* Action Button */}
                             <button
                                 onClick={handleSendNow}
-                                disabled={sending}
-                                className="mt-2 w-full h-14 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg rounded-full shadow-glow transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+                                disabled={
+                                    !wallet?.id ||
+                                    !toUserId ||
+                                    sending ||
+                                    amountNumber <= 0 ||
+                                    Number.isNaN(amountNumber)
+                                }
+                                className="mt-2 w-full h-14 bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg rounded-full"
                             >
-                                {sending ? "Sending..." : "Send Now"}
-                                <span className="material-symbols-outlined">arrow_forward</span>
+                                {sending ? "Processing..." : "Send Now"}
                             </button>
                         </div>
                     </div>
 
 
-                    {/* RECEIVE MONEY PANEL */}
-                    <div className="lg:col-span-5 flex flex-col h-full">
-                        <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden h-full flex flex-col">
-                            <div className="p-6 border-b border-border-dark flex justify-between items-center">
-                                <h3 className="text-black text-lg font-bold">Receive Money</h3>
-                                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
-                                    My QR
-                                </span>
-                            </div>
 
-                            <div className="flex-1 p-8 flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-surface-dark to-[#161d19]">
-                                <div className="bg-white p-4 rounded-2xl shadow-xl transform transition-transform hover:scale-105 duration-300">
+                    {/* RECEIVE MONEY PANEL */}
+                    <div className="lg:col-span-5 flex justify-center">
+                        <div className="group relative flex flex-col items-center w-full max-w-[420px] bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-[#e6ece9] overflow-hidden">
+
+
+                            {/* Card Decoration */}
+                            <div className="absolute top-0 w-full h-32 bg-gradient-to-b from-[#f0fdf4] to-transparent opacity-80 z-0" />
+
+
+                            <div className="relative z-10 flex flex-col items-center w-full p-8 pb-10">
+
+
+                                {/* Profile */}
+                                <div className="flex flex-col items-center gap-3 mb-6">
                                     <img
-                                        className="size-48 md:size-56 object-contain"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBD2r5Z27KaIqj68sYDnJpRxDLEGkO_stGxndLoBF9VO0S4QzHKj3GcMxNk9cuRPUoDb6C-iXg4PykqYWsHn9xNUVmLfOcYUmxIM2z86JHDvbs03nvG3TP-b7JNNSxilDiXweDZu3_WcggJF5aXe0tCAvk99eRdtNvFbCa8vq9pvZOjK7yJSnvXGXP8PfmtvkrUdtsNB8K0SQfR4bj6H07wDpVwC7zwo66Tx0yzFyxlJTkozVFEQJUX1AvuZTe8AY5NKvWI2HdLu4t6"
-                                        alt="QR Code for receiving payment"
+                                        src={resolveAvatarSrc(null)}
+                                        alt="avatar"
+                                        className="w-16 h-16 rounded-full object-cover border"
                                     />
+                                    <div className="text-center">
+                                        <h3 className="text-xl font-bold text-[#111714]">
+                                            {wallet?.accountName || "User"}
+                                        </h3>
+                                        <p className="text-sm text-[#648772]">
+                                            Wallet ID: {wallet?.id || "—"}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="text-center text-black">
-                                    <p className="font-bold text-lg">Jane Doe</p>
-                                    <p className="text-sm font-mono mt-1 bg-background-white px-3 py-1 rounded-lg inline-block border border-border-dark/50">
-                                        0x3f...8a21
-                                    </p>
+
+
+                                {/* QR */}
+                                <div className="relative bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 group-hover:scale-[1.02] transition-transform">
+                                    {qrCode ? (
+                                        <img
+                                            className="size-52"
+                                            src={
+                                                typeof qrCode === "string" && qrCode.startsWith("data:")
+                                                    ? qrCode
+                                                    : `data:image/png;base64,${qrCode}`
+                                            }
+                                            alt="QR Code"
+                                        />
+                                    ) : (
+                                        <div className="size-52 flex items-center justify-center text-gray-400">
+                                            Loading QR...
+                                        </div>
+                                    )}
+
+
+                                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#111714] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md">
+                                        SCAN ME
+                                    </div>
                                 </div>
-                                <div className="flex w-full gap-3 mt-2 text-black">
-                                    <button className="flex-1 flex items-center justify-center gap-2 h-10 border border-black rounded-full text-sm font-medium hover:bg-background-dark transition-colors">
-                                        <span className="material-symbols-outlined text-lg">
-                                            download
-                                        </span>
-                                        Save
-                                    </button>
-                                    <button className="flex-1 flex items-center justify-center gap-2 h-10 border border-black rounded-full text-sm font-medium hover:bg-background-dark transition-colors">
-                                        <span className="material-symbols-outlined text-lg">
-                                            share
-                                        </span>
-                                        Share
-                                    </button>
+
+
+                                {/* Account Number */}
+                                <div className="w-full">
+                                    <label className="block text-xs font-bold text-[#648772] mb-1.5 ml-1 uppercase tracking-wider">
+                                        Account Number
+                                    </label>
+                                    <div className="flex items-center justify-between gap-3 p-3 bg-[#f6f8f7] rounded-xl border hover:border-primary/30 transition-colors">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
+                                                <span className="material-symbols-outlined text-[20px]">
+                                                    wallet
+                                                </span>
+                                            </div>
+                                            <span className="font-mono text-sm truncate text-[#111714]">
+                                                {wallet?.accountNumber || 'N/A'}
+                                            </span>
+
+
+                                        </div>
+                                        <button
+                                            onClick={handleCopyAddress}
+                                            className="p-2 text-[#648772] hover:text-[#111714] hover:bg-white rounded-lg transition-all"
+                                            title="Copy Address"
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">
+                                                content_copy
+                                            </span>
+                                        </button>
+                                    </div>
                                 </div>
+
+
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* ================= TRANSACTION HISTORY ================= */}
+
+                {/*  TRANSACTION HISTORY  */}
                 <div className="flex flex-col gap-6">
                     {/* Header + Filters */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -315,6 +568,7 @@ export default function TransferHistoryPage() {
                                 </span>
                             </div>
 
+
                             {/* Direction */}
                             <div className="relative">
                                 <select
@@ -334,6 +588,7 @@ export default function TransferHistoryPage() {
                                 </span>
                             </div>
 
+
                             {/* Extra filter button (UI only) */}
                             <button className="bg-surface-dark border border-border-dark hover:border-primary text-text-muted hover:text-white rounded-lg p-2 transition-colors">
                                 <span className="material-symbols-outlined text-lg">
@@ -342,6 +597,7 @@ export default function TransferHistoryPage() {
                             </button>
                         </div>
                     </div>
+
 
                     {/* Table */}
                     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -370,6 +626,7 @@ export default function TransferHistoryPage() {
                                 </tr>
                             </thead>
 
+
                             <tbody className="divide-y divide-gray-200">
                                 {transactions.map((tx) => (
                                     <tr
@@ -389,6 +646,7 @@ export default function TransferHistoryPage() {
                                             </div>
                                         </td>
 
+
                                         {/* Entity / partner */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="text-black text-sm font-medium">
@@ -396,12 +654,14 @@ export default function TransferHistoryPage() {
                                             </span>
                                         </td>
 
+
                                         {/* Type */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="text-gray-600 text-sm">
                                                 {tx.direction === "OUT" ? "Sent" : "Received"}
                                             </span>
                                         </td>
+
 
                                         {/* Amount */}
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -414,6 +674,7 @@ export default function TransferHistoryPage() {
                                                 {tx.direction === "OUT" ? "-" : "+"}${tx.amount}
                                             </span>
                                         </td>
+
 
                                         {/* Status */}
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -435,12 +696,14 @@ export default function TransferHistoryPage() {
                                             </div>
                                         </td>
 
+
                                         {/* Note */}
                                         <td className="px-6 py-4 whitespace-nowrap max-w-[200px]">
                                             <span className="text-gray-600 text-sm truncate block">
                                                 {tx.note}
                                             </span>
                                         </td>
+
 
                                         {/* Chevron */}
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -450,6 +713,7 @@ export default function TransferHistoryPage() {
                                         </td>
                                     </tr>
                                 ))}
+
 
                                 {transactions.length === 0 && (
                                     <tr>
@@ -471,12 +735,14 @@ export default function TransferHistoryPage() {
                         <p className="text-black text-sm">
                             Showing{" "}
                             <span className="font-medium">
-                                {totalElements === 0 ? 0 : page * PAGE_SIZE + 1}
+                                {start}–{end}
                             </span>{" "}
                             of{" "}
                             <span className="font-medium">{totalElements}</span>{" "}
                             transactions
                         </p>
+
+
                         <div className="flex gap-2">
                             <button
                                 disabled={page === 0}
