@@ -1,12 +1,14 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../features/auth/context/AuthContext";
 import { useState, useEffect } from "react";
 import userService from "../services/userService";
+
 
 export default function Sidebar({ activeRoute = "dashboard" }) {
     const navigate = useNavigate();
     const { user, logout } = useAuth(); // 🔥 LẤY USER ĐANG LOGIN
     const [profile, setProfile] = useState(null);
+    const location = useLocation();
 
 
     const handleNavigation = (path) => {
@@ -39,6 +41,7 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
 
     const navItems = [
         { id: "dashboard", icon: "grid_view", label: "Wallet Overview", path: "/dashboard", filled: true },
+        { id: "spending-summary", icon: "attach_money", label: "Spending Summary", path: "/spending-summary", filled: true },
         { id: "deposit", icon: "arrow_downward", label: "Deposit", path: "/deposit" },
         { id: "withdraw", icon: "arrow_upward", label: "Withdraw", path: "/withdraw" },
         { id: "receive", icon: "qr_code_scanner", label: "Receive Money", path: "/receive-money" },
@@ -48,6 +51,17 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
 
     console.log(user.avatar);
     console.log("AUTH USER:", user);
+
+    const currentRoute = (() => {
+        if (location.pathname.startsWith("/spending-summary")) return "spending-summary";
+        if (location.pathname.startsWith("/dashboard")) return "dashboard";
+        if (location.pathname.startsWith("/deposit")) return "deposit";
+        if (location.pathname.startsWith("/withdraw")) return "withdraw";
+        if (location.pathname.startsWith("/receive-money")) return "receive";
+        if (location.pathname.startsWith("/transfer-history")) return "transactions";
+        if (location.pathname.startsWith("/profile")) return "profile";
+        return "";
+    })();
 
 
     return (
@@ -87,17 +101,22 @@ export default function Sidebar({ activeRoute = "dashboard" }) {
                         <button
                             key={item.id}
                             onClick={() => handleNavigation(item.path)}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-full transition-all w-full text-left ${activeRoute === item.id
-                                ? 'bg-primary text-text-main shadow-md shadow-primary/20'
-                                : 'text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e]'
+                            className={`flex items-center gap-3 px-4 py-3 rounded-full transition-all w-full text-left ${currentRoute === item.id
+                                ? "bg-primary text-text-main shadow-md shadow-primary/20"
+                                : "text-text-sub dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#25382e]"
                                 }`}
                         >
                             <span
                                 className="material-symbols-outlined"
-                                style={activeRoute === item.id && item.filled ? { fontVariationSettings: "'FILL' 1" } : {}}
+                                style={
+                                    currentRoute === item.id && item.filled
+                                        ? { fontVariationSettings: "'FILL' 1" }
+                                        : {}
+                                }
                             >
                                 {item.icon}
                             </span>
+
                             <span className="text-sm font-medium">{item.label}</span>
                         </button>
                     ))}

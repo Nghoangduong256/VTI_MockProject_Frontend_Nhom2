@@ -7,6 +7,33 @@ import walletService from "../../../services/walletService";
 import cardService from "../../../services/cardService";
 import contactService from "../../../services/contactService";
 import transactionService from "../../../services/transactionService";
+import TransactionTable from "../../../components/TransactionTable";
+
+const normalizeWeeklyActivity = (transactions = []) => {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    const map = {};
+    days.forEach(d => {
+        map[d] = 0;
+    });
+
+    transactions.forEach(tx => {
+        if (!tx.transactionDate || !tx.amount) return;
+
+        const date = new Date(tx.transactionDate);
+        const day = date.toLocaleDateString("en-US", { weekday: "short" });
+
+        if (map[day] !== undefined) {
+            map[day] += Math.abs(tx.amount);
+        }
+    });
+
+    return days.map(d => ({
+        day: d,
+        totalAmount: map[d]
+    }));
+};
+
 
 export default function DashboardPage() {
     const [isDark, setIsDark] = useState(false);
@@ -24,7 +51,8 @@ export default function DashboardPage() {
     const [selectedContact, setSelectedContact] = useState(null);
 
     const [walletSummary, setWalletSummary] = useState({ income: 0, expense: 0 });
-    const [spendingData, setSpendingData] = useState([]);
+    const weeklyActivity = normalizeWeeklyActivity(transactions);
+
 
     // New State for Modals
     const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -54,7 +82,6 @@ export default function DashboardPage() {
                 contactService.getFrequentContacts(),
                 transactionService.getTransactions(0, 5),
                 walletService.getWalletSummary(),
-                transactionService.getSpendingAnalytics()
             ]);
 
             // Destructure results
@@ -341,60 +368,52 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Chart */}
-                            <div className="bg-white dark:bg-[#1a2c22] rounded-xl p-6 border border-gray-100 dark:border-[#2a3c32]">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-lg font-semibold text-text-main dark:text-white">Spending Analytics</h3>
-                                    <select className="bg-gray-50 dark:bg-[#25382e] border border-gray-200 dark:border-[#2a3c32] text-text-main dark:text-white text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50">
-                                        <option>Last 7 days</option>
-                                        <option>Last 30 days</option>
-                                        <option>Last 90 days</option>
-                                    </select>
-                                </div>
-                                <div className="h-64 flex items-end justify-around gap-2">
-                                    {spendingData.length > 0 ? spendingData.map((item, i) => (
-                                        <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                                            <div
-                                                className="w-full bg-gradient-to-t from-primary to-primary/50 rounded-t-lg hover:from-primary/80 hover:to-primary/40 transition-all cursor-pointer"
-                                                style={{ height: `${item.value}%` }} // Simplified, assuming value is % or scaled
-                                                title={`$${item.value}`}
-                                            ></div>
-                                            <span className="text-xs text-text-sub dark:text-gray-400">
-                                                {item.label}
-                                            </span>
+                            <div className="grid grid-cols-7 gap-4 h-48 items-end">
+                                {weeklyActivity.map((d, idx) => {
+                                    const max = Math.max(...weeklyActivity.map(x => x.totalAmount), 1);
+
+                                    const height =
+                                        d.totalAmount > 0
+                                            ? `${(d.totalAmount / max) * 100}%`
+                                            : "4px";
+
+                                    return (
+                                        <div key={idx} className="flex flex-col items-center h-full">
+                                            <div className="flex-1 flex items-end">
+                                                <div
+                                                    className="w-6 bg-primary/80 rounded-t-lg"
+                                                    style={{ height }}
+                                                />
+                                            </div>
+                                            <span className="mt-2 text-xs text-text-sub">{d.day}</span>
                                         </div>
-                                    )) : (
-                                        <p className="text-gray-400 w-full text-center">No analytics data</p>
-                                    )}
-                                </div>
+                                    );
+                                })}
                             </div>
+
 
                             {/* Recent Transactions */}
                             <div className="bg-white dark:bg-[#1a2c22] rounded-xl p-6 border border-gray-100 dark:border-[#2a3c32]">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-lg font-semibold text-text-main dark:text-white">Recent Transactions</h3>
-                                    <a href="#" className="text-sm text-primary hover:text-primary/80 transition-colors">View All</a>
+                                    <h3 className="text-lg font-semibold text-text-main dark:text-white">
+                                        Recent Transactions
+                                    </h3>
+
+                                    <button
+                                        onClick={() => navigate("/transfer-history")}
+                                        className="text-sm text-primary hover:text-primary/80 transition-colors"
+                                    >
+                                        View All
+                                    </button>
                                 </div>
-                                <div className="space-y-4">
-                                    {transactions.length > 0 ? transactions.map((tx, i) => (
-                                        <div key={tx.id || i} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors cursor-pointer">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`size-11 rounded-full flex items-center justify-center ${tx.direction === 'IN' ? 'bg-green-50 dark:bg-green-500/10 text-green-500' : 'bg-red-50 dark:bg-red-500/10 text-red-500'}`}>
-                                                    <span className="material-symbols-outlined text-xl">{tx.direction === 'IN' ? 'arrow_downward' : 'arrow_upward'}</span>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-text-main dark:text-white">{tx.category || 'General'}</p>
-                                                    <p className="text-xs text-text-sub dark:text-gray-400">{new Date(tx.date).toLocaleDateString()}</p>
-                                                </div>
-                                            </div>
-                                            <p className={`text-sm font-semibold ${tx.direction === 'IN' ? 'text-green-500' : 'text-red-500'}`}>
-                                                {tx.direction === 'IN' ? '+' : '-'}${tx.amount.toLocaleString()}
-                                            </p>
-                                        </div>
-                                    )) : (
-                                        <p className="text-center text-text-sub">No recent transactions</p>
-                                    )}
-                                </div>
+
+                                {transactions.length > 0 ? (
+                                    <TransactionTable transactions={transactions.slice(0, 5)} />
+                                ) : (
+                                    <p className="text-center text-text-sub">No recent transactions</p>
+                                )}
                             </div>
+
                         </div>
 
                         {/* Right Column */}

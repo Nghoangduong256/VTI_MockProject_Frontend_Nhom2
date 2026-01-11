@@ -1,5 +1,10 @@
 import Header from "../components/Header";
 import Sidebar from "../../../components/Sidebar";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "../../../services/summarySpendingApi";
+
+
 
 export default function SpendingSummaryPage() {
     // mock user (giống ProfilePage)
@@ -8,9 +13,94 @@ export default function SpendingSummaryPage() {
         role: "STANDARD",
     };
 
+    const [summary, setSummary] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const weeklyActivity = normalizeWeeklyActivity(
+        summary?.spendingActivity ?? []
+    );
+
+    // Transaction pagination
+    const PAGE_SIZE = 5;
+    const [currentPage, setCurrentPage] = useState(1);
+    const transactions = summary?.recentTransactions ?? [];
+    const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
+    const paginatedTransactions = transactions.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+    );
+
+
+
+    // Icon
+    const CATEGORY_ICON_MAP = {
+        Food: "restaurant",
+        Transport: "directions_car",
+        Shopping: "shopping_bag",
+        Entertainment: "movie",
+        Utilities: "bolt",
+        Default: "receipt_long",
+    };
+
+    const CATEGORY_COLOR_MAP = {
+        Food: "text-green-500",
+        Transport: "text-blue-500",
+        Shopping: "text-purple-500",
+        Entertainment: "text-orange-500",
+        Utilities: "text-yellow-500",
+        Default: "text-gray-400",
+    };
+
+
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+            console.warn("No access token found");
+            setLoading(false);
+            return;
+        }
+
+        axios.get(`${API_BASE_URL}/api/spending/summary`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+            .then(res => {
+                console.log("Spending activity:", res.data.spendingActivity);
+                setSummary(res.data);
+            })
+            .catch(err => {
+                console.error("Failed to fetch spending summary", err);
+                setSummary(null);
+            })
+            .finally(() => setLoading(false));
+    }, []);
+
+
+    if (loading) {
+        return <div className="p-8">Loading...</div>;
+    }
+
+    if (!summary) {
+        return <div className="p-8">No data</div>;
+    }
+
+    const breakdown = summary.spendingBreakdown ?? [];
+
+    const totalSpending = breakdown.reduce(
+        (sum, item) => sum + item.totalAmount,
+        0
+    );
+
+    const breakdownWithPercent = breakdown.map(item => ({
+        ...item,
+        percent: totalSpending > 0
+            ? Math.round((item.totalAmount / totalSpending) * 100)
+            : 0
+    }));
+
     return (
         <>
-            <Header />
 
             <div className="flex max-w-[1440px] mx-auto">
                 <Sidebar user={user} />
@@ -43,146 +133,248 @@ export default function SpendingSummaryPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <StatCard
                                     title="Total Balance"
-                                    value="$12,450.00"
+                                    value={`${(summary.availableBalance ?? 0).toLocaleString()} VND`}
                                     icon="account_balance"
                                 />
+
+
                                 <StatCard
                                     title="Monthly Spending"
-                                    value="$3,240.50"
+                                    value={`${(summary.monthlySpending ?? 0).toLocaleString()} VND`}
                                     icon="credit_card"
                                 />
+
                                 <StatCard
                                     title="Monthly Savings"
-                                    value="$1,100.00"
+                                    value={`${(summary.monthlySaving ?? 0).toLocaleString()} VND`}
                                     icon="savings"
                                 />
+
+
                             </div>
 
-                            {/* BAR CHART */}
-                            <div className="bg-white rounded-xl p-6 border shadow-sm">
-                                <h3 className="text-lg font-bold mb-4">
-                                    Spending Activity
-                                </h3>
+                            {/* SPENDING INFORMATION */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* BAR CHART */}
+                                <div className="lg:col-span-2 bg-white rounded-xl p-6 border shadow-sm">
+                                    <h3 className="text-lg font-bold mb-4">
+                                        Spending Activity
+                                    </h3>
 
-                                <div className="grid grid-cols-7 gap-4 h-64 items-end">
-                                    {[
-                                        { day: "Mon", h: "45%" },
-                                        { day: "Tue", h: "65%" },
-                                        { day: "Wed", h: "30%" },
-                                        { day: "Thu", h: "85%", active: true },
-                                        { day: "Fri", h: "55%" },
-                                        { day: "Sat", h: "90%" },
-                                        { day: "Sun", h: "40%" },
-                                    ].map((d) => (
-                                        <div
-                                            key={d.day}
-                                            className="flex flex-col items-center gap-2"
-                                        >
-                                            <div
-                                                className={`w-8 rounded-t-lg ${d.active
-                                                    ? "bg-primary shadow-[0_0_15px_-3px_rgba(54,226,123,0.5)]"
-                                                    : "bg-primary/20"
-                                                    }`}
-                                                style={{ height: d.h }}
-                                            />
-                                            <span className="text-xs font-semibold text-gray-500">
-                                                {d.day}
-                                            </span>
-                                        </div>
-                                    ))}
+                                    <div className="grid grid-cols-7 gap-4 h-64 items-end">
+                                        {weeklyActivity.map((d, idx) => {
+                                            const max = Math.max(
+                                                ...weeklyActivity.map(x => x.totalAmount),
+                                                1
+                                            );
+
+                                            const height =
+                                                d.totalAmount > 0
+                                                    ? `${(d.totalAmount / max) * 100}%`
+                                                    : "4px"; // 👈 QUAN TRỌNG
+
+                                            return (
+                                                <div key={idx} className="flex flex-col items-center h-full">
+                                                    {/* BAR AREA */}
+                                                    <div className="flex-1 flex items-end">
+                                                        <div
+                                                            className="w-8 bg-primary/80 rounded-t-lg transition-all"
+                                                            style={{ height }}
+                                                        />
+                                                    </div>
+
+                                                    {/* LABEL */}
+                                                    <span className="mt-2 text-xs font-semibold text-gray-500">
+                                                        {d.day}
+                                                    </span>
+                                                </div>
+
+                                            );
+                                        })}
+                                    </div>
                                 </div>
+
+
+                                {/* SPENDING BREAKDOWN */}
+                                <div className="bg-white rounded-xl p-6 border shadow-sm">
+                                    <h3 className="text-lg font-bold mb-4">
+                                        Spending by Category
+                                    </h3>
+
+                                    {/* PIE + TOTAL */}
+                                    <div className="flex flex-col items-center">
+                                        {/* khóa kích thước + luôn vuông để không méo */}
+                                        <div
+                                            className="relative w-44 aspect-square rounded-full shrink-0"
+                                            style={{ background: buildPieGradient(breakdownWithPercent) }}
+                                        >
+                                            {/* donut hole */}
+                                            <div className="absolute inset-7 bg-white rounded-full flex flex-col items-center justify-center text-center px-2">
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                                                    Total
+                                                </span>
+
+                                                <div className="text-lg font-black leading-tight">
+                                                    {totalSpending.toLocaleString()}
+                                                </div>
+
+                                                <div className="text-sm font-bold leading-tight">
+                                                    VND
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* LEGEND dưới pie (giống design) */}
+                                        <div className="mt-6 w-full space-y-3">
+                                            {breakdownWithPercent.map((c, idx) => (
+                                                <div key={idx} className="flex items-center justify-between text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <span
+                                                            className="w-3 h-3 rounded-full"
+                                                            style={{ backgroundColor: c.color || COLORS[idx % COLORS.length] }}
+                                                        />
+                                                        <span className="font-medium text-gray-700">
+                                                            {c.categoryName}
+                                                        </span>
+                                                    </div>
+
+                                                    <span className="font-bold text-gray-900">
+                                                        {c.percent}%
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
 
-                            {/* TRANSACTIONS */}
+
+
+
+
+                            {/* RECENT TRANSACTIONS */}
                             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                                <div className="p-6 border-b flex justify-between">
+                                <div className="p-6 border-b flex justify-between items-center">
                                     <h3 className="font-bold">Recent Transactions</h3>
-                                    <button className="text-primary font-bold">
+
+                                    <button
+                                        onClick={() => navigate("/transfer-history")}
+                                        className="text-primary font-bold hover:underline"
+                                    >
                                         View All
                                     </button>
                                 </div>
 
-                                <table className="w-full text-left">
-                                    <thead className="bg-background-light">
-                                        <tr>
-                                            <Th>Merchant</Th>
-                                            <Th>Category</Th>
-                                            <Th>Date</Th>
-                                            <Th right>Amount</Th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <Transaction
-                                            name="Starbucks Coffee"
-                                            category="Food & Drink"
-                                            date="Oct 24, 2023"
-                                            amount="- $12.50"
-                                        />
-                                        <Transaction
-                                            name="Nike Store"
-                                            category="Shopping"
-                                            date="Oct 23, 2023"
-                                            amount="- $145.00"
-                                        />
-                                        <Transaction
-                                            name="Upwork Inc."
-                                            category="Freelance Income"
-                                            date="Oct 22, 2023"
-                                            amount="+ $850.00"
-                                            positive
-                                        />
-                                    </tbody>
-                                </table>
+                                <RecentTransactionTable
+                                    transactions={paginatedTransactions}
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPrev={() => setCurrentPage(p => p - 1)}
+                                    onNext={() => setCurrentPage(p => p + 1)}
+                                />
                             </div>
+
                         </div>
                     </div>
                 </main>
             </div>
         </>
     );
-}
 
-/* ===== SUB COMPONENTS (NỘI BỘ PAGE) ===== */
 
-function StatCard({ title, value, icon }) {
-    return (
-        <div className="rounded-xl p-6 bg-white border shadow-sm">
-            <div className="flex justify-between mb-2">
-                <p className="text-sm text-gray-500 font-medium">
-                    {title}
-                </p>
-                <span className="material-symbols-outlined text-primary">
-                    {icon}
-                </span>
+    /* ===== SUB COMPONENTS (NỘI BỘ PAGE) ===== */
+
+    function StatCard({ title, value, icon }) {
+        return (
+            <div className="rounded-xl p-6 bg-white border shadow-sm">
+                <div className="flex justify-between mb-2">
+                    <p className="text-sm text-gray-500 font-medium">
+                        {title}
+                    </p>
+                    <span className="material-symbols-outlined text-primary">
+                        {icon}
+                    </span>
+                </div>
+                <p className="text-3xl font-bold">{value}</p>
             </div>
-            <p className="text-3xl font-bold">{value}</p>
-        </div>
-    );
-}
+        );
+    }
 
-function Th({ children, right }) {
-    return (
-        <th
-            className={`py-4 px-6 text-xs font-semibold uppercase text-gray-500 ${right ? "text-right" : ""
-                }`}
-        >
-            {children}
-        </th>
-    );
-}
-
-function Transaction({ name, category, date, amount, positive }) {
-    return (
-        <tr className="hover:bg-background-light">
-            <td className="py-4 px-6 font-bold">{name}</td>
-            <td className="py-4 px-6 text-gray-600">{category}</td>
-            <td className="py-4 px-6 text-gray-500">{date}</td>
-            <td
-                className={`py-4 px-6 text-right font-bold ${positive ? "text-primary" : ""
+    function Th({ children, right }) {
+        return (
+            <th
+                className={`py-4 px-6 text-xs font-semibold uppercase text-gray-500 ${right ? "text-right" : ""
                     }`}
             >
-                {amount}
-            </td>
-        </tr>
-    );
+                {children}
+            </th>
+        );
+    }
+
+    function Transaction({ name, category, date, amount }) {
+        const icon = CATEGORY_ICON_MAP[name] || CATEGORY_ICON_MAP.Default;
+        const color = CATEGORY_COLOR_MAP[name] || CATEGORY_COLOR_MAP.Default;
+
+        return (
+            <tr className="hover:bg-background-light">
+                {/* MERCHANT + ICON */}
+                <td className="py-4 px-6">
+                    <div className="flex items-center gap-3 font-bold">
+                        <span
+                            className={`material-symbols-outlined text-xl ${color}`}
+                        >
+                            {icon}
+                        </span>
+                        <span>{name}</span>
+                    </div>
+                </td>
+
+                {/* CATEGORY / DESCRIPTION */}
+                <td className="py-4 px-6 text-gray-600">
+                    {category}
+                </td>
+
+                {/* DATE */}
+                <td className="py-4 px-6 text-gray-500">
+                    {date}
+                </td>
+
+                {/* AMOUNT */}
+                <td className="py-4 px-6 text-right font-bold">
+                    {amount}
+                </td>
+            </tr>
+        );
+    }
+
+
+    function normalizeWeeklyActivity(data) {
+        const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+        const map = {};
+        data.forEach(d => {
+            const day = new Date(d.date).toLocaleDateString("en-US", {
+                weekday: "short"
+            });
+            map[day] = d.totalAmount;
+        });
+
+        return days.map(day => ({
+            day,
+            totalAmount: map[day] ?? 0
+        }));
+    }
+
+    function buildPieGradient(data) {
+        let current = 0;
+
+        return `conic-gradient(${data.map((item, idx) => {
+            const start = current;
+            const end = current + item.percent;
+            current = end;
+
+            return `${item.color || COLORS[idx % COLORS.length]} ${start}% ${end}%`;
+        }).join(", ")})`;
+    }
 }
