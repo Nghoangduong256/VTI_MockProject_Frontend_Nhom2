@@ -3,6 +3,7 @@ import Sidebar from "../../../components/Sidebar";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../../../services/summarySpendingApi";
+import TransactionTable from "../../../components/TransactionTable";
 
 
 
@@ -49,6 +50,21 @@ export default function SpendingSummaryPage() {
         Utilities: "text-yellow-500",
         Default: "text-gray-400",
     };
+
+    const formatDateTime = (raw) => {
+        if (!raw) return "—";
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return "—";
+
+        return d.toLocaleStringx("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "numeric",
+            minute: "2-digit",
+        });
+    };
+
 
 
     useEffect(() => {
@@ -254,26 +270,43 @@ export default function SpendingSummaryPage() {
 
 
                             {/* RECENT TRANSACTIONS */}
-                            <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                                <div className="p-6 border-b flex justify-between items-center">
-                                    <h3 className="font-bold">Recent Transactions</h3>
+                            <TransactionTable transactions={paginatedTransactions} />
 
-                                    <button
-                                        onClick={() => navigate("/transfer-history")}
-                                        className="text-primary font-bold hover:underline"
-                                    >
-                                        View All
-                                    </button>
+                            {/* PAGINATION */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between px-6 py-4 border-t">
+                                    <span className="text-sm text-gray-500">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            disabled={currentPage === 1}
+                                            onClick={() => setCurrentPage(p => p - 1)}
+                                            className={`px-4 py-2 rounded-full text-sm font-medium
+                    ${currentPage === 1
+                                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                    : "bg-gray-100 hover:bg-gray-200"
+                                                }`}
+                                        >
+                                            Previous
+                                        </button>
+
+                                        <button
+                                            disabled={currentPage === totalPages}
+                                            onClick={() => setCurrentPage(p => p + 1)}
+                                            className={`px-4 py-2 rounded-full text-sm font-medium
+                    ${currentPage === totalPages
+                                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                    : "bg-primary text-text-main hover:bg-primary/90"
+                                                }`}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
                                 </div>
+                            )}
 
-                                <RecentTransactionTable
-                                    transactions={paginatedTransactions}
-                                    currentPage={currentPage}
-                                    totalPages={totalPages}
-                                    onPrev={() => setCurrentPage(p => p - 1)}
-                                    onNext={() => setCurrentPage(p => p + 1)}
-                                />
-                            </div>
 
                         </div>
                     </div>

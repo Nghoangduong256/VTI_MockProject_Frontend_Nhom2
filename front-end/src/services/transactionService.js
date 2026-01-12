@@ -57,7 +57,26 @@ const transactionService = {
             console.warn("API /api/analytics/spending not found, using dummy data");
             return [];
         }
-    }
+    },
+
+        /**
+     * ✅ Get recent transactions for Dashboard
+     * Endpoint: GET /api/dashboard/recent-transactions?limit={limit}
+     */
+
+      getRecentTransactions: async (limit = 5) => {
+    const response = await apiClient.get('/api/dashboard/recent-transactions', {
+      params: { limit },
+    });
+    return response.data; // backend trả về List<TransactionDTO>
+  },
+
+    // ✅ Add: Dùng chung API với Spending Summary
+  getSpendingSummary: async () => {
+    const response = await apiClient.get('/api/spending/summary');
+    return response.data;
+  },
+
 };
 
 export default transactionService;

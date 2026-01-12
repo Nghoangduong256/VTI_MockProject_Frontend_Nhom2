@@ -9,30 +9,26 @@ import contactService from "../../../services/contactService";
 import transactionService from "../../../services/transactionService";
 import TransactionTable from "../../../components/TransactionTable";
 
-const normalizeWeeklyActivity = (transactions = []) => {
+const normalizeWeeklyActivity = (items = []) => {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const map = Object.fromEntries(days.map(d => [d, 0]));
 
-    const map = {};
-    days.forEach(d => {
-        map[d] = 0;
+    items.forEach(x => {
+        const rawDate = x?.date || x?.transactionDate || x?.createdAt;
+        const rawAmount = x?.totalAmount ?? x?.amount;
+
+        if (!rawDate || rawAmount == null) return;
+
+        const d = new Date(rawDate);
+        if (Number.isNaN(d.getTime())) return;
+
+        const day = d.toLocaleDateString("en-US", { weekday: "short" }); // Mon/Tue...
+        if (map[day] !== undefined) map[day] += Math.abs(Number(rawAmount));
     });
 
-    transactions.forEach(tx => {
-        if (!tx.transactionDate || !tx.amount) return;
-
-        const date = new Date(tx.transactionDate);
-        const day = date.toLocaleDateString("en-US", { weekday: "short" });
-
-        if (map[day] !== undefined) {
-            map[day] += Math.abs(tx.amount);
-        }
-    });
-
-    return days.map(d => ({
-        day: d,
-        totalAmount: map[d]
-    }));
+    return days.map(d => ({ day: d, totalAmount: map[d] }));
 };
+
 
 
 export default function DashboardPage() {
@@ -51,7 +47,14 @@ export default function DashboardPage() {
     const [selectedContact, setSelectedContact] = useState(null);
 
     const [walletSummary, setWalletSummary] = useState({ income: 0, expense: 0 });
-    const weeklyActivity = normalizeWeeklyActivity(transactions);
+    const [spendingSummary, setSpendingSummary] = useState(null);
+
+
+    const weeklyActivity = normalizeWeeklyActivity(
+        spendingSummary?.spendingActivity ?? []
+    );
+
+
 
 
     // New State for Modals
@@ -80,9 +83,13 @@ export default function DashboardPage() {
                 walletService.getBalance(),
                 cardService.getCards(),
                 contactService.getFrequentContacts(),
-                transactionService.getTransactions(0, 5),
+
+                // ✅ DÙNG CHUNG API VỚI SPENDING SUMMARY
+                transactionService.getSpendingSummary(),
+
                 walletService.getWalletSummary(),
             ]);
+
 
             // Destructure results
             const [
@@ -90,10 +97,10 @@ export default function DashboardPage() {
                 balanceStatsResult,
                 cardsResult,
                 contactsResult,
-                txResult,
-                summaryResult,
-                analyticsResult
+                spendingSummaryResult,
+                summaryResult
             ] = results;
+
 
             // Log errors for debugging
             results.forEach((res, index) => {
@@ -134,19 +141,23 @@ export default function DashboardPage() {
             }
 
             // Process Transactions
-            if (txResult.status === 'fulfilled') {
-                setTransactions(txResult.value.content || []);
+            if (spendingSummaryResult.status === "fulfilled") {
+                const ss = spendingSummaryResult.value;
+
+                setSpendingSummary(ss);
+
+                // 🔥 Recent Transactions – giống y hệt Spending Summary Page
+                setTransactions(ss?.recentTransactions ?? []);
             }
+
+
+
 
             // Process Summary
             if (summaryResult.status === 'fulfilled') {
                 setWalletSummary(summaryResult.value);
             }
 
-            // Process Analytics
-            if (analyticsResult.status === 'fulfilled') {
-                setSpendingData(analyticsResult.value);
-            }
 
         } catch (error) {
             console.error("Critical error in refreshData:", error);
@@ -367,52 +378,58 @@ export default function DashboardPage() {
                                 </div>
                             </div>
 
-                            {/* Chart */}
-                            <div className="grid grid-cols-7 gap-4 h-48 items-end">
-                                {weeklyActivity.map((d, idx) => {
-                                    const max = Math.max(...weeklyActivity.map(x => x.totalAmount), 1);
 
-                                    const height =
-                                        d.totalAmount > 0
+
+
+                            {/* SPENDING ACTIVITY */}
+                            <div className="bg-white dark:bg-[#1a2c22] rounded-xl p-6 border border-gray-100 dark:border-[#2a3c32]">
+                                <h3 className="text-lg font-semibold mb-4">Spending Activity</h3>
+
+                                <div className="grid grid-cols-7 gap-4 h-48 items-end">
+                                    {weeklyActivity.map((d, idx) => {
+                                        const max = Math.max(...weeklyActivity.map(x => x.totalAmount), 1);
+                                        const height = d.totalAmount > 0
                                             ? `${(d.totalAmount / max) * 100}%`
                                             : "4px";
 
-                                    return (
-                                        <div key={idx} className="flex flex-col items-center h-full">
-                                            <div className="flex-1 flex items-end">
-                                                <div
-                                                    className="w-6 bg-primary/80 rounded-t-lg"
-                                                    style={{ height }}
-                                                />
+                                        return (
+                                            <div key={idx} className="flex flex-col items-center h-full">
+                                                <div className="flex-1 flex items-end">
+                                                    <div className="w-6 bg-primary/80 rounded-t-lg" style={{ height }} />
+                                                </div>
+                                                <span className="mt-2 text-xs text-text-sub">{d.day}</span>
                                             </div>
-                                            <span className="mt-2 text-xs text-text-sub">{d.day}</span>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-
-                            {/* Recent Transactions */}
-                            <div className="bg-white dark:bg-[#1a2c22] rounded-xl p-6 border border-gray-100 dark:border-[#2a3c32]">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-lg font-semibold text-text-main dark:text-white">
+                            {/* RECENT TRANSACTIONS */}
+                            <div className="bg-white dark:bg-[#1a2c22] rounded-xl p-0 border border-gray-100 dark:border-[#2a3c32] overflow-hidden">
+                                <div className="p-6 border-b flex justify-between items-center">
+                                    <h3 className="font-bold text-text-main dark:text-white">
                                         Recent Transactions
                                     </h3>
 
                                     <button
                                         onClick={() => navigate("/transfer-history")}
-                                        className="text-sm text-primary hover:text-primary/80 transition-colors"
+                                        className="text-primary font-bold"
                                     >
                                         View All
                                     </button>
                                 </div>
 
-                                {transactions.length > 0 ? (
-                                    <TransactionTable transactions={transactions.slice(0, 5)} />
-                                ) : (
-                                    <p className="text-center text-text-sub">No recent transactions</p>
-                                )}
+                                <div className="p-0">
+                                    {transactions.length > 0 ? (
+                                        <TransactionTable transactions={transactions.slice(0, 5)} />
+                                    ) : (
+                                        <div className="p-6 text-center text-text-sub">
+                                            No recent transactions
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+
 
                         </div>
 
