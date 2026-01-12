@@ -1,9 +1,14 @@
 import Header from "../components/Header";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+
 import Sidebar from "../../../components/Sidebar";
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { API_BASE_URL } from "../../../services/summarySpendingApi";
+import { getSpendingSummary } from "../../../services/summarySpendingApi";
+import SpendingActivity from "../../../components/SpendingActivity";
+import RecentTransactions from "../../../components/RecentTransactions";
 
+const COLORS = ["#4CAF50", "#2196F3", "#9C27B0", "#FF9800", "#00BCD4", "#9E9E9E"];
 
 
 export default function SpendingSummaryPage() {
@@ -15,9 +20,9 @@ export default function SpendingSummaryPage() {
 
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
-    const weeklyActivity = normalizeWeeklyActivity(
-        summary?.spendingActivity ?? []
-    );
+    const { token } = useAuth();
+    const navigate = useNavigate();
+
 
     // Transaction pagination
     const PAGE_SIZE = 5;
@@ -52,29 +57,14 @@ export default function SpendingSummaryPage() {
 
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
+        if (!token) return;
 
-        if (!token) {
-            console.warn("No access token found");
-            setLoading(false);
-            return;
-        }
-
-        axios.get(`${API_BASE_URL}/api/spending/summary`, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-            .then(res => {
-                console.log("Spending activity:", res.data.spendingActivity);
-                setSummary(res.data);
-            })
-            .catch(err => {
-                console.error("Failed to fetch spending summary", err);
-                setSummary(null);
-            })
+        setLoading(true);
+        getSpendingSummary(token)
+            .then((res) => setSummary(res.data))
             .finally(() => setLoading(false));
-    }, []);
+    }, [token]);
+
 
 
     if (loading) {
@@ -86,7 +76,6 @@ export default function SpendingSummaryPage() {
     }
 
     const breakdown = summary.spendingBreakdown ?? [];
-
     const totalSpending = breakdown.reduce(
         (sum, item) => sum + item.totalAmount,
         0
@@ -98,6 +87,7 @@ export default function SpendingSummaryPage() {
             ? Math.round((item.totalAmount / totalSpending) * 100)
             : 0
     }));
+
 
     return (
         <>
@@ -156,42 +146,8 @@ export default function SpendingSummaryPage() {
                             {/* SPENDING INFORMATION */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 {/* BAR CHART */}
-                                <div className="lg:col-span-2 bg-white rounded-xl p-6 border shadow-sm">
-                                    <h3 className="text-lg font-bold mb-4">
-                                        Spending Activity
-                                    </h3>
-
-                                    <div className="grid grid-cols-7 gap-4 h-64 items-end">
-                                        {weeklyActivity.map((d, idx) => {
-                                            const max = Math.max(
-                                                ...weeklyActivity.map(x => x.totalAmount),
-                                                1
-                                            );
-
-                                            const height =
-                                                d.totalAmount > 0
-                                                    ? `${(d.totalAmount / max) * 100}%`
-                                                    : "4px"; // 👈 QUAN TRỌNG
-
-                                            return (
-                                                <div key={idx} className="flex flex-col items-center h-full">
-                                                    {/* BAR AREA */}
-                                                    <div className="flex-1 flex items-end">
-                                                        <div
-                                                            className="w-8 bg-primary/80 rounded-t-lg transition-all"
-                                                            style={{ height }}
-                                                        />
-                                                    </div>
-
-                                                    {/* LABEL */}
-                                                    <span className="mt-2 text-xs font-semibold text-gray-500">
-                                                        {d.day}
-                                                    </span>
-                                                </div>
-
-                                            );
-                                        })}
-                                    </div>
+                                <div className="lg:col-span-2">
+                                    <SpendingActivity data={summary.spendingActivity ?? []} />
                                 </div>
 
 
@@ -254,26 +210,10 @@ export default function SpendingSummaryPage() {
 
 
                             {/* RECENT TRANSACTIONS */}
-                            <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                                <div className="p-6 border-b flex justify-between items-center">
-                                    <h3 className="font-bold">Recent Transactions</h3>
-
-                                    <button
-                                        onClick={() => navigate("/transfer-history")}
-                                        className="text-primary font-bold hover:underline"
-                                    >
-                                        View All
-                                    </button>
-                                </div>
-
-                                <RecentTransactionTable
-                                    transactions={paginatedTransactions}
-                                    currentPage={currentPage}
-                                    totalPages={totalPages}
-                                    onPrev={() => setCurrentPage(p => p - 1)}
-                                    onNext={() => setCurrentPage(p => p + 1)}
-                                />
-                            </div>
+                            <RecentTransactions
+                                transactions={(summary.recentTransactions ?? []).slice(0, 5)}
+                                onViewAll={() => navigate("/transfer-history")}
+                            />
 
                         </div>
                     </div>

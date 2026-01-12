@@ -8,31 +8,12 @@ import cardService from "../../../services/cardService";
 import contactService from "../../../services/contactService";
 import transactionService from "../../../services/transactionService";
 import TransactionTable from "../../../components/TransactionTable";
+import { getSpendingSummary } from "../../../services/summarySpendingApi";
+import useSpendingSummary from "../../../services/useSpendingSummary";
+import RecentTransactions from "../../../components/RecentTransactions";
+import SpendingActivity from "../../../components/SpendingActivity";
 
-const normalizeWeeklyActivity = (transactions = []) => {
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-    const map = {};
-    days.forEach(d => {
-        map[d] = 0;
-    });
-
-    transactions.forEach(tx => {
-        if (!tx.transactionDate || !tx.amount) return;
-
-        const date = new Date(tx.transactionDate);
-        const day = date.toLocaleDateString("en-US", { weekday: "short" });
-
-        if (map[day] !== undefined) {
-            map[day] += Math.abs(tx.amount);
-        }
-    });
-
-    return days.map(d => ({
-        day: d,
-        totalAmount: map[d]
-    }));
-};
 
 
 export default function DashboardPage() {
@@ -50,8 +31,16 @@ export default function DashboardPage() {
     const [transferAmount, setTransferAmount] = useState("");
     const [selectedContact, setSelectedContact] = useState(null);
 
+    const {
+        data: spendingSummary,
+        loading: spendingLoading,
+        error: spendingError
+    } = useSpendingSummary();
+
+
     const [walletSummary, setWalletSummary] = useState({ income: 0, expense: 0 });
-    const weeklyActivity = normalizeWeeklyActivity(transactions);
+    const recentTransactions = spendingSummary?.recentTransactions || [];
+
 
 
     // New State for Modals
@@ -80,7 +69,6 @@ export default function DashboardPage() {
                 walletService.getBalance(),
                 cardService.getCards(),
                 contactService.getFrequentContacts(),
-                transactionService.getTransactions(0, 5),
                 walletService.getWalletSummary(),
             ]);
 
@@ -90,9 +78,7 @@ export default function DashboardPage() {
                 balanceStatsResult,
                 cardsResult,
                 contactsResult,
-                txResult,
                 summaryResult,
-                analyticsResult
             ] = results;
 
             // Log errors for debugging
@@ -133,20 +119,12 @@ export default function DashboardPage() {
                 setContacts(contactsResult.value);
             }
 
-            // Process Transactions
-            if (txResult.status === 'fulfilled') {
-                setTransactions(txResult.value.content || []);
-            }
-
             // Process Summary
             if (summaryResult.status === 'fulfilled') {
                 setWalletSummary(summaryResult.value);
             }
 
-            // Process Analytics
-            if (analyticsResult.status === 'fulfilled') {
-                setSpendingData(analyticsResult.value);
-            }
+
 
         } catch (error) {
             console.error("Critical error in refreshData:", error);
@@ -154,12 +132,9 @@ export default function DashboardPage() {
     };
 
     useEffect(() => {
-        const init = async () => {
-            await refreshData();
-            setLoading(false);
-        };
-        init();
+        refreshData();
     }, []);
+
 
     const handleLogout = () => {
         logout();
@@ -239,6 +214,16 @@ export default function DashboardPage() {
             alert("Failed to topup: " + (error.response?.data?.message || error.message));
         }
     };
+
+    if (spendingLoading) {
+        return <div className="p-8">Loading dashboard...</div>;
+    }
+
+    if (spendingError) {
+        console.error(spendingError);
+    }
+
+    console.log("Dashboard transactions:", transactions);
 
     return (
         <div className={`min-h-screen bg-background-light ${isDark ? "dark bg-background-dark" : ""} font-display text-text-main dark:text-white overflow-hidden`}>
@@ -368,51 +353,16 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Chart */}
-                            <div className="grid grid-cols-7 gap-4 h-48 items-end">
-                                {weeklyActivity.map((d, idx) => {
-                                    const max = Math.max(...weeklyActivity.map(x => x.totalAmount), 1);
+                            <SpendingActivity data={spendingSummary.spendingActivity} />
 
-                                    const height =
-                                        d.totalAmount > 0
-                                            ? `${(d.totalAmount / max) * 100}%`
-                                            : "4px";
-
-                                    return (
-                                        <div key={idx} className="flex flex-col items-center h-full">
-                                            <div className="flex-1 flex items-end">
-                                                <div
-                                                    className="w-6 bg-primary/80 rounded-t-lg"
-                                                    style={{ height }}
-                                                />
-                                            </div>
-                                            <span className="mt-2 text-xs text-text-sub">{d.day}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
 
 
                             {/* Recent Transactions */}
-                            <div className="bg-white dark:bg-[#1a2c22] rounded-xl p-6 border border-gray-100 dark:border-[#2a3c32]">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-lg font-semibold text-text-main dark:text-white">
-                                        Recent Transactions
-                                    </h3>
+                            <RecentTransactions
+                                transactions={transactions.slice(0, 5)}
+                                onViewAll={() => navigate("/transfer-history")}
+                            />
 
-                                    <button
-                                        onClick={() => navigate("/transfer-history")}
-                                        className="text-sm text-primary hover:text-primary/80 transition-colors"
-                                    >
-                                        View All
-                                    </button>
-                                </div>
-
-                                {transactions.length > 0 ? (
-                                    <TransactionTable transactions={transactions.slice(0, 5)} />
-                                ) : (
-                                    <p className="text-center text-text-sub">No recent transactions</p>
-                                )}
-                            </div>
 
                         </div>
 
