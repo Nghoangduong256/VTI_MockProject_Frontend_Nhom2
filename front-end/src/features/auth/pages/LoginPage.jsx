@@ -46,8 +46,14 @@ export default function LoginPage() {
 
       if (result.success) {
         // Redirect đến dashboard sau khi login thành công
+        const roles = result.data?.roles || result.roles || [];
 
-        navigate("/dashboard");
+        if (roles.includes("ADMIN")) {
+          alert("Bạn đang đăng nhập với quyền ADMIN");
+          navigate("/user-manager");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setLocalError(result.error?.message || "Đăng nhập thất bại");
       }
