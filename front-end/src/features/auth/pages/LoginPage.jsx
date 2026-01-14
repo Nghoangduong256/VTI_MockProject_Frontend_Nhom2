@@ -49,6 +49,12 @@ export default function LoginPage() {
         const user = result.user;
         if (user && (user.roles?.includes("ADMIN") || user.role === "ADMIN")) {
           navigate("/admin/transactions");
+        // Redirect đến dashboard sau khi login thành công
+        const roles = result.data?.roles || result.roles || [];
+
+        if (roles.includes("ADMIN")) {
+          alert("Bạn đang đăng nhập với quyền ADMIN");
+          navigate("/user-manager");
         } else {
           navigate("/dashboard");
         }

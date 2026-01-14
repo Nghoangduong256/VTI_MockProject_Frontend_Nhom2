@@ -11,6 +11,7 @@ import ProtectedRoute from "../features/auth/components/ProtectedRoute";
 import TransferHistoryPage from "../features/auth/pages/TransferHistoryPage";
 import AdminTransactionHistoryPage from "../features/auth/pages/AdminTransactionHistoryPage";
 
+import UserManagement from "../features/auth/pages/UserManagePage";
 function AppRoutes() {
   return (
     <Routes>
@@ -41,8 +42,22 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-      <Route path="/spending-summary" element={<ProtectedRoute><SpendingSummaryPage /></ProtectedRoute>} />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/spending-summary"
+        element={
+          <ProtectedRoute>
+            <SpendingSummaryPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/receive-money"
         element={
@@ -64,11 +79,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <AdminTransactionHistoryPage />
+        path="/user-manager"
+        element={
+          <ProtectedRoute>
+            <UserManagement />
           </ProtectedRoute>
         }
       />
     </Routes>
-
   );
 }
 
