@@ -35,6 +35,35 @@ const walletService = {
             console.warn("API /api/wallet/summary not found, using dummy data");
             return { income: 0, expense: 0 };
         }
+    },
+
+    /**
+     * Get all wallets (Admin)
+     * Endpoint: GET /api/admin/wallets
+     * @param {number} page
+     * @param {number} size
+     */
+    getAllWallets: async (page = 0, size = 50) => {
+        const response = await apiClient.get('/api/admin/wallets', { params: { page, size } });
+        return response.data;
+    },
+
+    /**
+     * Lock wallet
+     * Endpoint: PUT /api/admin/wallets/lock/{id}
+     */
+    lockWallet: async (id) => {
+        const response = await apiClient.put(`/api/admin/wallets/lock/${id}`);
+        return response.data;
+    },
+
+    /**
+     * Unlock wallet
+     * Endpoint: PUT /api/admin/wallets/unlock/{id}
+     */
+    unlockWallet: async (id) => {
+        const response = await apiClient.put(`/api/admin/wallets/unlock/${id}`);
+        return response.data;
     }
 };
 

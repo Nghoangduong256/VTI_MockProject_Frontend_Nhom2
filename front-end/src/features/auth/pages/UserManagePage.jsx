@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import userManageService from "../../../services/userManageService";
+import SidebarAdmin from "../../../components/common/SidebarAdmin";
+import { useAuth } from "../context/AuthContext";
 
 export default function UserManagement() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const PAGE_SIZE = 10;
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,17 +86,30 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="bg-white text-slate-900 h-screen flex">
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-6 lg:p-8">
-          <div className="max-w-[1400px] mx-auto flex flex-col gap-6">
-            {/* HEADER */}
-            <div>
-              <h2 className="text-3xl font-black">User Management</h2>
-              <p className="text-gray-500">
-                Manage access, view history, and update permissions.
-              </p>
+    <div className="bg-white text-slate-900 h-screen flex font-display">
+      <SidebarAdmin />
+
+      <main className="flex-1 flex flex-col min-w-0 bg-[#f8fafc] dark:bg-background-dark h-screen overflow-y-auto w-full">
+        <header className="h-16 flex items-center justify-between px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 shrink-0">
+          <div className="flex items-center gap-4">
+            <h2 className="text-slate-900 dark:text-white text-xl font-extrabold tracking-tight">User Management</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-slate-900 dark:text-white leading-none">Admin</p>
             </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors ml-2"
+              title="Logout"
+            >
+              <span className="material-symbols-outlined">logout</span>
+            </button>
+          </div>
+        </header>
+
+        <div className="p-6 lg:p-8">
+          <div className="max-w-[1400px] mx-auto flex flex-col gap-6">
 
             {/* FILTER */}
             <div className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col lg:flex-row gap-4 items-center justify-between shadow-sm">
@@ -114,20 +138,21 @@ export default function UserManagement() {
                   </div>
                 </div>
 
-                {/* STATUS */}
-                <div className="w-full sm:w-48">
-                  <label className="block mb-1 text-sm font-medium text-gray-600">
+                {/* STATUS - SIMPLE WORKING SOLUTION */}
+                <div className="space-y-1.5 w-full sm:w-48">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                     Search by Status
                   </label>
 
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    {/* Filter icon */}
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                       filter_alt
                     </span>
 
+                    {/* Dùng browser default arrow - KHÔNG có appearance-none */}
                     <select
-                      className="w-full bg-white border border-gray-300 rounded-xl h-12
-                 pl-11 pr-8 appearance-none focus:ring-1 focus:ring-primary focus:border-primary"
+                      className="w-full bg-white border border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary h-10 pl-10"
                       value={statusFilter}
                       onChange={(e) => {
                         setStatusFilter(e.target.value);
@@ -139,9 +164,7 @@ export default function UserManagement() {
                       <option value="LOCKED">Locked</option>
                     </select>
 
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                      expand_more
-                    </span>
+                    {/* KHÔNG có arrow element nào cả */}
                   </div>
                 </div>
 
@@ -224,8 +247,8 @@ export default function UserManagement() {
                         <td className="px-6 py-4">
                           {user.createdAt
                             ? new Date(user.createdAt).toLocaleDateString(
-                                "vi-VN"
-                              )
+                              "vi-VN"
+                            )
                             : "--"}
                         </td>
                         <td className="px-6 py-4">
@@ -268,11 +291,10 @@ export default function UserManagement() {
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage((p) => p - 1)}
                     className={`size-8 flex items-center justify-center rounded-lg border text-sm
-        ${
-          currentPage === 1
-            ? "border-gray-200 text-gray-400 cursor-not-allowed"
-            : "border-gray-300 hover:bg-gray-100"
-        }`}
+        ${currentPage === 1
+                        ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-gray-300 hover:bg-gray-100"
+                      }`}
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       chevron_left
@@ -287,11 +309,10 @@ export default function UserManagement() {
                         key={p}
                         onClick={() => setCurrentPage(p)}
                         className={`size-8 rounded-lg text-sm font-semibold transition-colors
-            ${
-              p === currentPage
-                ? "bg-primary text-black"
-                : "border border-gray-300 hover:bg-gray-100"
-            }`}
+            ${p === currentPage
+                            ? "bg-primary text-black"
+                            : "border border-gray-300 hover:bg-gray-100"
+                          }`}
                       >
                         {p}
                       </button>
@@ -303,11 +324,10 @@ export default function UserManagement() {
                     disabled={currentPage === totalPages || totalPages === 0}
                     onClick={() => setCurrentPage((p) => p + 1)}
                     className={`size-8 flex items-center justify-center rounded-lg border text-sm
-        ${
-          currentPage === totalPages || totalPages === 0
-            ? "border-gray-200 text-gray-400 cursor-not-allowed"
-            : "border-gray-300 hover:bg-gray-100"
-        }`}
+        ${currentPage === totalPages || totalPages === 0
+                        ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                        : "border-gray-300 hover:bg-gray-100"
+                      }`}
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       chevron_right
@@ -317,8 +337,8 @@ export default function UserManagement() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

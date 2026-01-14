@@ -207,11 +207,17 @@ export default function TransferHistoryPage() {
         try {
             setSending(true);
 
-            await TransferService.transfer({
+            const response = await TransferService.transfer({
                 toUserId,
                 amount: amountNumber,
                 note,
             });
+
+            // Check for logical failure (soft error with 200 OK)
+            if (response.data && response.data.success === false) {
+                alert(response.data.note || "Transfer failed"); // Display specific error note
+                return;
+            }
 
             /* OPTIMISTIC TX (OUT) */
             const optimisticTx = {
@@ -263,7 +269,12 @@ export default function TransferHistoryPage() {
 
         } catch (e) {
             console.error(e);
-            alert("Transfer failed");
+            // Handle error response from server (e.g., 400 Bad Request)
+            if (e.response && e.response.data && e.response.data.note) {
+                alert(e.response.data.note);
+            } else {
+                alert("Transfer failed");
+            }
         } finally {
             setSending(false);
         }

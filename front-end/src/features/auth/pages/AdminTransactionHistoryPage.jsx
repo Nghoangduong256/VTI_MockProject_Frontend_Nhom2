@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import transactionService from '../../../services/transactionService';
 import { useAuth } from '../context/AuthContext';
+import SidebarAdmin from '../../../components/common/SidebarAdmin';
 
 export default function AdminTransactionHistoryPage() {
     const navigate = useNavigate();
@@ -50,8 +51,6 @@ export default function AdminTransactionHistoryPage() {
         }
     };
 
-
-
     const applyFilters = () => {
         let filtered = [...transactions];
 
@@ -83,15 +82,7 @@ export default function AdminTransactionHistoryPage() {
                 'Transfer In': 'TRANSFER_IN', // Adjust if API returns different enum
                 'Transfer Out': 'TRANSFER_OUT' // Adjust if API returns different enum
             };
-            // Note: API might return DEPOSIT, WITHDRAW, TRANSFER... 
-            // We need to match loosely or strictly. Let's assume strict for now.
-            // If Type in filter is "Transfer In", we look for generic TRANSFER or refine if API has specific direction.
-            // Based on user request/mock: "Transfer In", "Transfer Out"
-            // Backend commonly might just say "TRANSFER" + sender/receiver check.
-            // But if API returns exact "TRANSFER_IN" etc., we use map.
-            // Let's partial match nicely or check if data.type exists.
 
-            // Adjusting logic for common cases:
             const targetKey = typeMap[typeFilter];
             if (targetKey) {
                 filtered = filtered.filter(t => t.type === targetKey);
@@ -176,53 +167,7 @@ export default function AdminTransactionHistoryPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
-            {/* Side Navigation Bar - Mock Static for now or reuse existing Sidebar if componentized. 
-                Since User gave full HTML including Sidebar, I will render it here as requested 
-                OR better: reuse layout. But user request implies "Create a screen... serving admin".
-                I will include the sidebar structure from the HTML for fidelity to the specific request.
-            */}
-            <aside className="w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen sticky top-0 hidden lg:flex">
-                <div className="p-6">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="bg-primary size-10 rounded-xl flex items-center justify-center text-white">
-                            <span className="material-symbols-outlined">account_balance_wallet</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <h1 className="text-[#121617] dark:text-white text-base font-bold leading-tight">E-Wallet Admin</h1>
-                            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">Financial Management</p>
-                        </div>
-                    </div>
-                    <nav className="flex flex-col gap-1">
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
-                            <span className="material-symbols-outlined">dashboard</span>
-                            <span className="text-sm font-semibold">Dashboard</span>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary" href="#">
-                            <span className="material-symbols-outlined">receipt_long</span>
-                            <span className="text-sm font-bold">Transactions</span>
-                        </a>
-                        {/* Other links... */}
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
-                            <span className="material-symbols-outlined">group</span>
-                            <span className="text-sm font-semibold">Users</span>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
-                            <span className="material-symbols-outlined">account_balance</span>
-                            <span className="text-sm font-semibold">Wallets</span>
-                        </a>
-                    </nav>
-                </div>
-                {/* System Status Mock */}
-                <div className="mt-auto p-6">
-                    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">System Status</p>
-                        <div className="flex items-center gap-2">
-                            <div className="size-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="text-sm font-semibold dark:text-slate-200">Operational</span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
+            <SidebarAdmin />
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0 bg-background-light dark:bg-background-dark h-screen overflow-y-auto w-full">
@@ -236,7 +181,6 @@ export default function AdminTransactionHistoryPage() {
                             <button className="size-10 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                                 <span className="material-symbols-outlined">notifications</span>
                             </button>
-                            {/* Mobile Menu Toggle could go here */}
                         </div>
                         <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-2"></div>
                         <div className="flex items-center gap-3">

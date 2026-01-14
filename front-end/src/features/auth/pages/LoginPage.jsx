@@ -46,15 +46,23 @@ export default function LoginPage() {
 
       if (result.success) {
         // Check role and redirect
+        // Check role and redirect
         const user = result.user;
+
+        // Check for inactive status
+        if (user && (user.status === 'INACTIVE' || user.active === false)) {
+          alert("Tài khoản Chưa kích hoạt");
+          return; // Stop login process
+        }
+
         if (user && (user.roles?.includes("ADMIN") || user.role === "ADMIN")) {
           navigate("/admin/transactions");
-        // Redirect đến dashboard sau khi login thành công
-        const roles = result.data?.roles || result.roles || [];
+          return;
+        }
 
+        const roles = result.data?.roles || result.roles || [];
         if (roles.includes("ADMIN")) {
-          alert("Bạn đang đăng nhập với quyền ADMIN");
-          navigate("/user-manager");
+          navigate("/admin/transactions"); // Consolidate redirect to one place if possible, but keeping logic similar to original flow
         } else {
           navigate("/dashboard");
         }
