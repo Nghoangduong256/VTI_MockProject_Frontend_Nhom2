@@ -22,11 +22,12 @@ const authService = {
             if (response.data.token) {
                 // Kiểm tra role trực tiếp từ response
                 const roles = response.data.roles || [];
-                if (roles.length > 0 && !roles.includes('USER')) {
+                // Allow USER or ADMIN
+                if (roles.length > 0 && !roles.includes('USER') && !roles.includes('ADMIN')) {
                     throw {
                         response: {
                             data: {
-                                message: 'Tài khoản không có quyền truy cập. Chỉ dành cho Customer.'
+                                message: 'Tài khoản không có quyền truy cập. Chỉ dành cho Customer hoặc Admin.'
                             }
                         }
                     };

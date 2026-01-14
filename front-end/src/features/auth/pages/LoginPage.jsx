@@ -45,9 +45,13 @@ export default function LoginPage() {
       });
 
       if (result.success) {
-        // Redirect đến dashboard sau khi login thành công
-
-        navigate("/dashboard");
+        // Check role and redirect
+        const user = result.user;
+        if (user && (user.roles?.includes("ADMIN") || user.role === "ADMIN")) {
+          navigate("/admin/transactions");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setLocalError(result.error?.message || "Đăng nhập thất bại");
       }
