@@ -9,6 +9,8 @@ import Withdraw from "../features/withdraw/Withdraw";
 import ReceiveMoneyPage from "../features/auth/pages/ReceiveMoneyPage";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
 import TransferHistoryPage from "../features/auth/pages/TransferHistoryPage";
+import AdminTransactionHistoryPage from "../features/auth/pages/AdminTransactionHistoryPage";
+
 import UserManagement from "../features/auth/pages/UserManagePage";
 function AppRoutes() {
   return (
@@ -73,6 +75,10 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/admin/transactions"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AdminTransactionHistoryPage />
         path="/user-manager"
         element={
           <ProtectedRoute>

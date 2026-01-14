@@ -45,6 +45,10 @@ export default function LoginPage() {
       });
 
       if (result.success) {
+        // Check role and redirect
+        const user = result.user;
+        if (user && (user.roles?.includes("ADMIN") || user.role === "ADMIN")) {
+          navigate("/admin/transactions");
         // Redirect đến dashboard sau khi login thành công
         const roles = result.data?.roles || result.roles || [];
 

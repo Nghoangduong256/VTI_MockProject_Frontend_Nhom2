@@ -57,6 +57,15 @@ const transactionService = {
             console.warn("API /api/analytics/spending not found, using dummy data");
             return [];
         }
+    },
+
+    /**
+     * Get all transactions for admin
+     * Endpoint: GET /api/admin/transactions
+     */
+    getAllAdminTransactions: async () => {
+        const response = await apiClient.get('/api/admin/transactions');
+        return response.data;
     }
 };
 

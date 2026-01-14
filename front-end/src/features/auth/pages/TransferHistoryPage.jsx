@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import TransferService from "../../../services/transfer/transferService";
 import walletService from "../../../services/walletService";
 import qrService from "../../../services/qrService";
-
+import userService from "../../../services/userService";
 const HISTORY_CACHE_KEY = "transfer_history_cache";
 const PAGE_SIZE = 10;
 
@@ -15,10 +16,12 @@ const STATUS_STYLE = {
 
 export default function TransferHistoryPage() {
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     /* WALLET */
     const [wallet, setWallet] = useState(null);
     const walletId = wallet?.id;
+    const [profile, setProfile] = useState(null);
 
     /* HISTORY */
     const [transactions, setTransactions] = useState([]);
@@ -42,10 +45,11 @@ export default function TransferHistoryPage() {
     /* RECEIVE */
     const [qrCode, setQrCode] = useState(null);
 
-    /* LOAD WALLET + QR */
+    /* LOAD WALLET + QR + PROFILE */
     useEffect(() => {
         refreshWallet();
         qrService.getWalletQR().then(setQrCode);
+        userService.getProfile().then(setProfile).catch(console.error);
     }, []);
 
     /* Filter time */
@@ -179,7 +183,11 @@ export default function TransferHistoryPage() {
 
     const resolveAvatarSrc = (avatar) => {
         if (!avatar) return "https://i.pravatar.cc/150?img=12";
-        if (avatar.startsWith?.("data:image")) return avatar;
+
+        // Nếu đã là data:image thì dùng luôn
+        if (avatar.startsWith("data:image")) return avatar;
+
+        // Nếu là base64 thuần
         return `data:image/jpeg;base64,${avatar}`;
     };
 
@@ -464,10 +472,11 @@ export default function TransferHistoryPage() {
                                 {/* Profile */}
                                 <div className="flex flex-col items-center gap-3 mb-6">
                                     <img
-                                        src={resolveAvatarSrc(null)}
+                                        src={resolveAvatarSrc(profile?.avatarUrl || profile?.avatar || user?.avatar)}
                                         alt="avatar"
                                         className="w-16 h-16 rounded-full object-cover border"
                                     />
+
                                     <div className="text-center">
                                         <h3 className="text-xl font-bold text-[#111714]">
                                             {wallet?.accountName || "User"}

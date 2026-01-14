@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
         const userData = await authService.getCurrentUser();
         setUser(userData);
         localStorage.setItem("user", JSON.stringify(userData));
-        return { success: true, data: response };
+        return { success: true, data: response, user: userData };
       }
     } catch (err) {
       setError(err.message);
