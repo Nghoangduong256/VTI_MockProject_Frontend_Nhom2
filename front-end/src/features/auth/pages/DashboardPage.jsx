@@ -6,7 +6,7 @@ import userService from "../../../services/userService";
 import walletService from "../../../services/walletService";
 import cardService from "../../../services/cardService";
 import contactService from "../../../services/contactService";
-import transactionService from "../../../services/transactionService";
+import TransferService from "../../../services/transfer/transferService";
 
 export default function DashboardPage() {
     const [isDark, setIsDark] = useState(false);
@@ -23,8 +23,17 @@ export default function DashboardPage() {
     const [transferAmount, setTransferAmount] = useState("");
     const [selectedContact, setSelectedContact] = useState(null);
 
+    // Phone search state
+    const [phoneSearch, setPhoneSearch] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [searching, setSearching] = useState(false);
+
     const [walletSummary, setWalletSummary] = useState({ income: 0, expense: 0 });
     const [spendingData, setSpendingData] = useState([]);
+
+    // Notification state
+    const [incomingTransactions, setIncomingTransactions] = useState([]);
+    const [showNotifications, setShowNotifications] = useState(false);
 
     // New State for Modals
     const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -43,29 +52,33 @@ export default function DashboardPage() {
     });
 
     // Helper to refresh data
+    // Helper to refresh data
     const refreshData = async () => {
         try {
             console.log("Fetching dashboard data...");
+
+            // First fetch user to get wallet ID
+            const currentUser = await userService.getCurrentUser();
+            setProfile(currentUser);
+
+            const walletId = currentUser?.wallet?.id;
+
             // Use Promise.allSettled to prevent one failure from blocking all data
             const results = await Promise.allSettled([
-                userService.getCurrentUser(),
                 walletService.getBalance(),
                 cardService.getCards(),
                 contactService.getFrequentContacts(),
-                transactionService.getTransactions(0, 5),
-                walletService.getWalletSummary(),
-                transactionService.getSpendingAnalytics()
+                walletId ? TransferService.getTransferHistory(walletId, { page: 0, size: 10, filter: 'LAST_30_DAYS' }) : Promise.reject('No wallet ID'),
+                walletService.getWalletSummary()
             ]);
 
             // Destructure results
             const [
-                currentUserResult,
                 balanceStatsResult,
                 cardsResult,
                 contactsResult,
-                txResult,
-                summaryResult,
-                analyticsResult
+                transferHistoryResult,
+                summaryResult
             ] = results;
 
             // Log errors for debugging
@@ -75,24 +88,17 @@ export default function DashboardPage() {
                 }
             });
 
-            // Process User & Wallet
-            if (currentUserResult.status === 'fulfilled') {
-                const currentUser = currentUserResult.value;
-                setProfile(currentUser);
-
-                let mergedWallet = { ...currentUser.wallet };
-
-                // Merge Balance Stats if available
-                if (balanceStatsResult.status === 'fulfilled') {
-                    const balanceStats = balanceStatsResult.value;
-                    mergedWallet.monthlyChangePercent = balanceStats.monthlyChangePercent;
-                    if (balanceStats.balance !== undefined && balanceStats.balance !== null) {
-                        mergedWallet.balance = balanceStats.balance;
-                    }
+            // Process Wallet
+            let mergedWallet = { ...currentUser.wallet };
+            if (balanceStatsResult.status === 'fulfilled') {
+                const balanceStats = balanceStatsResult.value;
+                mergedWallet.monthlyChangePercent = balanceStats.monthlyChangePercent;
+                if (balanceStats.balance !== undefined && balanceStats.balance !== null) {
+                    mergedWallet.balance = balanceStats.balance;
                 }
-                console.log("Final Merged Wallet:", mergedWallet);
-                setWallet(mergedWallet);
             }
+            console.log("Final Merged Wallet:", mergedWallet);
+            setWallet(mergedWallet);
 
             // Process Cards
             if (cardsResult.status === 'fulfilled') {
@@ -101,24 +107,121 @@ export default function DashboardPage() {
                 console.warn("Cards failed to load");
             }
 
-            // Process Contacts
+            // Process Contacts (fallback)
             if (contactsResult.status === 'fulfilled') {
                 setContacts(contactsResult.value);
             }
 
-            // Process Transactions
-            if (txResult.status === 'fulfilled') {
-                setTransactions(txResult.value.content || []);
-            }
+            // Process Transfer History
+            if (transferHistoryResult.status === 'fulfilled') {
+                const historyData = transferHistoryResult.value;
+                const txList = historyData.content || [];
 
-            // Process Summary
-            if (summaryResult.status === 'fulfilled') {
-                setWalletSummary(summaryResult.value);
-            }
+                // CHỈ lấy các giao dịch thành công (success: true)
+                const successfulTxs = txList.filter(tx => tx.success === true);
 
-            // Process Analytics
-            if (analyticsResult.status === 'fulfilled') {
-                setSpendingData(analyticsResult.value);
+                // Set recent transactions (limit to 5 for dashboard) - CHỈ HIỂN THỊ GIAO DỊCH THÀNH CÔNG
+                setTransactions(successfulTxs.slice(0, 5));
+
+                // Extract incoming transactions for notifications - CHỈ LẤY GIAO DỊCH THÀNH CÔNG
+                const incomingTxs = successfulTxs.filter(tx => tx.direction === 'IN' && tx.type === 'TRANSFER_IN');
+                setIncomingTransactions(incomingTxs);
+
+                // Extract unique recent contacts from TRANSFER_OUT transactions - CHỈ LẤY GIAO DỊCH THÀNH CÔNG
+                const recentContactsMap = new Map();
+                successfulTxs
+                    .filter(tx => tx.direction === 'OUT' && tx.type === 'TRANSFER_OUT')
+                    .forEach(tx => {
+                        // Use note as identifier if available, otherwise use partnerName
+                        const contactKey = tx.note || tx.partnerName;
+                        if (!recentContactsMap.has(contactKey) && contactKey && contactKey !== 'Sent money') {
+                            recentContactsMap.set(contactKey, {
+                                id: tx.id,
+                                name: tx.note || tx.partnerName,
+                                avatarUrl: null,
+                                phone: null,
+                                userId: null,
+                                lastTransactionDate: tx.createdAt,
+                                amount: tx.amount
+                            });
+                        }
+                    });
+
+                // If no contacts from API, use transfer history contacts (limited functionality)
+                if (contactsResult.status === 'rejected' && recentContactsMap.size > 0) {
+                    const recentContactsList = Array.from(recentContactsMap.values()).slice(0, 5);
+                    setContacts(recentContactsList);
+                }
+
+                // TÍNH TOÁN WALLET SUMMARY TỪ GIAO DỊCH THÀNH CÔNG
+                const calculatedSummary = {
+                    income: 0,
+                    expense: 0
+                };
+
+                successfulTxs.forEach(tx => {
+                    if (tx.direction === 'IN') {
+                        calculatedSummary.income += tx.amount;
+                    } else if (tx.direction === 'OUT') {
+                        calculatedSummary.expense += tx.amount;
+                    }
+                });
+
+                // Kết hợp với summary từ API (nếu có) hoặc chỉ dùng calculatedSummary
+                let finalSummary = calculatedSummary;
+
+                // Nếu muốn giữ summary từ API, comment dòng trên và sử dụng:
+                // if (summaryResult.status === 'fulfilled') {
+                //     finalSummary = summaryResult.value;
+                // }
+
+                setWalletSummary(finalSummary);
+
+                // Process data for Spending Analytics (Last 7 days) - CHỈ TÍNH GIAO DỊCH THÀNH CÔNG
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Get last 7 days including today
+                const last7DaysData = [];
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    last7DaysData.push({
+                        date: date,
+                        dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
+                        spending: 0
+                    });
+                }
+
+                // Calculate spending for each day (chỉ từ các giao dịch thành công)
+                successfulTxs.forEach(tx => {
+                    const txDate = new Date(tx.createdAt);
+                    txDate.setHours(0, 0, 0, 0);
+
+                    // Find matching day in last 7 days
+                    const dayData = last7DaysData.find(d => d.date.getTime() === txDate.getTime());
+
+                    if (dayData && tx.direction === 'OUT') {
+                        dayData.spending += tx.amount;
+                    }
+                });
+
+                // Find max spending for scaling
+                const maxSpending = Math.max(...last7DaysData.map(d => d.spending), 1);
+
+                // Convert to chart format with proper scaling
+                const chartData = last7DaysData.map(day => ({
+                    label: day.dayLabel,
+                    value: (day.spending / maxSpending) * 100, // Percentage of max
+                    amount: day.spending // Actual amount for tooltip
+                }));
+
+                setSpendingData(chartData);
+            } else {
+                // Nếu không có transfer history, vẫn xử lý summary từ API
+                if (summaryResult.status === 'fulfilled') {
+                    setWalletSummary(summaryResult.value);
+                }
             }
 
         } catch (error) {
@@ -134,14 +237,57 @@ export default function DashboardPage() {
         init();
     }, []);
 
+    // Close notification dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showNotifications && !event.target.closest('.notification-dropdown')) {
+                setShowNotifications(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showNotifications]);
+
     const handleLogout = () => {
         logout();
         navigate("/login");
     };
 
+    const handlePhoneSearch = async () => {
+        if (!phoneSearch || phoneSearch.trim().length < 10) {
+            alert("Please enter a valid phone number (minimum 10 digits)");
+            return;
+        }
+
+        setSearching(true);
+        try {
+            const results = await TransferService.getTargetWallets(phoneSearch.trim());
+            setSearchResults(results);
+
+            if (results.length === 0) {
+                alert("No wallet found with this phone number");
+            } else if (results.length === 1) {
+                // Auto-select if only one result
+                setSelectedContact({
+                    userId: results[0].userId,
+                    walletId: results[0].walletId,
+                    fullName: results[0].fullName,
+                    name: results[0].fullName,
+                    phone: results[0].accountNumber
+                });
+            }
+        } catch (error) {
+            console.error("Phone search failed:", error);
+            alert("Failed to search: " + (error.response?.data?.message || error.message));
+        } finally {
+            setSearching(false);
+        }
+    };
+
     const handleTransfer = async () => {
-        if (!selectedContact) {
-            alert("Please select a contact");
+        if (!selectedContact || !selectedContact.userId) {
+            alert("Please select a contact or search by phone number");
             return;
         }
         if (!transferAmount || isNaN(transferAmount) || parseFloat(transferAmount) <= 0) {
@@ -150,19 +296,25 @@ export default function DashboardPage() {
         }
 
         try {
-            await transactionService.transfer({
-                toUserId: selectedContact.id,
+            const result = await TransferService.transfer({
+                toUserId: selectedContact.userId,
                 amount: parseFloat(transferAmount),
-                note: "Quick Transfer"
+                note: "Quick Transfer from Dashboard"
             });
-            alert("Transfer successful!");
-            setTransferAmount("");
-            setSelectedContact(null);
-            // Refresh data
-            await refreshData();
+
+            if (result.data?.success || result.data?.status === 'COMPLETED') {
+                alert(`Transfer successful! \nSent $${transferAmount} to ${selectedContact.fullName || selectedContact.name}`);
+                setTransferAmount("");
+                setSelectedContact(null);
+                setPhoneSearch("");
+                setSearchResults([]);
+                // Refresh data
+                await refreshData();
+            }
         } catch (error) {
             console.error("Transfer failed:", error);
-            alert("Transfer failed: " + (error.response?.data?.message || error.message));
+            const errorMsg = error.response?.data?.note || error.response?.data?.message || error.message;
+            alert("Transfer failed: " + errorMsg);
         }
     };
 
@@ -281,10 +433,64 @@ export default function DashboardPage() {
                                 </span>
                             </button>
                             {/* Notifications */}
-                            <button className="relative flex items-center justify-center size-10 rounded-full bg-white dark:bg-[#1a2c22] border border-gray-200 dark:border-[#2a3c32] hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
-                                <span className="material-symbols-outlined text-text-sub dark:text-gray-400">notifications</span>
-                                <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full"></span>
-                            </button>
+                            <div className="relative notification-dropdown">
+                                <button
+                                    onClick={() => setShowNotifications(!showNotifications)}
+                                    className="relative flex items-center justify-center size-10 rounded-full bg-white dark:bg-[#1a2c22] border border-gray-200 dark:border-[#2a3c32] hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-text-sub dark:text-gray-400">notifications</span>
+                                    {incomingTransactions.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 size-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                            {incomingTransactions.length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Notification Dropdown */}
+                                {showNotifications && (
+                                    <div className="absolute right-0 top-12 w-80 bg-white dark:bg-[#1a2c22] border border-gray-200 dark:border-[#2a3c32] rounded-xl shadow-lg z-50 max-h-96 overflow-y-auto">
+                                        <div className="p-4 border-b border-gray-200 dark:border-[#2a3c32]">
+                                            <h3 className="font-bold text-text-main dark:text-white">Incoming Transactions</h3>
+                                            <p className="text-xs text-text-sub dark:text-gray-400">Recent money received</p>
+                                        </div>
+
+                                        {incomingTransactions.length > 0 ? (
+                                            <div className="divide-y divide-gray-100 dark:divide-[#2a3c32]">
+                                                {incomingTransactions.slice(0, 5).map((tx) => (
+                                                    <div key={tx.id} className="p-4 hover:bg-gray-50 dark:hover:bg-[#25382e] transition-colors">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="size-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                                                                <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-lg">arrow_downward</span>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-text-main dark:text-white truncate">
+                                                                    {tx.partnerName || 'Received money'}
+                                                                </p>
+                                                                <p className="text-xs text-text-sub dark:text-gray-400 mt-0.5">
+                                                                    {tx.note || 'No note'}
+                                                                </p>
+                                                                <p className="text-xs text-text-sub dark:text-gray-400 mt-1">
+                                                                    {new Date(tx.createdAt).toLocaleString('vi-VN')}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-sm font-bold text-green-600 dark:text-green-400">
+                                                                    +${tx.amount.toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="p-8 text-center">
+                                                <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">notifications_off</span>
+                                                <p className="text-sm text-text-sub dark:text-gray-400">No new notifications</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             {/* Logout */}
                             <button
                                 onClick={handleLogout}
@@ -304,7 +510,7 @@ export default function DashboardPage() {
                                 <div className="flex justify-between items-start mb-8">
                                     <div>
                                         <p className="text-sm opacity-80 mb-2">Total Balance</p>
-                                        <h2 className="text-4xl font-bold">${wallet?.balance?.toLocaleString() || '0.00'}</h2>
+                                        <h2 className="text-4xl font-bold">${(wallet?.availableBalance ?? wallet?.balance)?.toLocaleString() || '0.00'}</h2>
                                         <p className="text-xs opacity-70 mt-2 font-mono">Acc: {user?.phone || user?.username || '@user'}</p>
                                     </div>
                                     <div className="flex flex-col items-end">
@@ -352,18 +558,27 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="h-64 flex items-end justify-around gap-2">
                                     {spendingData.length > 0 ? spendingData.map((item, i) => (
-                                        <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                                        <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
                                             <div
-                                                className="w-full bg-gradient-to-t from-primary to-primary/50 rounded-t-lg hover:from-primary/80 hover:to-primary/40 transition-all cursor-pointer"
-                                                style={{ height: `${item.value}%` }} // Simplified, assuming value is % or scaled
-                                                title={`$${item.value}`}
-                                            ></div>
+                                                className="w-full bg-gradient-to-t from-primary to-primary/50 rounded-t-lg hover:from-primary/80 hover:to-primary/40 transition-all cursor-pointer relative"
+                                                style={{ height: `${item.value || 5}%`, minHeight: item.value > 0 ? '8px' : '2px' }}
+                                                title={`${item.label}: $${item.amount?.toLocaleString() || '0'}`}
+                                            >
+                                                {/* Tooltip on hover */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                                    ${item.amount?.toLocaleString() || '0'}
+                                                </div>
+                                            </div>
                                             <span className="text-xs text-text-sub dark:text-gray-400">
                                                 {item.label}
                                             </span>
                                         </div>
                                     )) : (
-                                        <p className="text-gray-400 w-full text-center">No analytics data</p>
+                                        <div className="w-full text-center py-8">
+                                            <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2 block">trending_up</span>
+                                            <p className="text-sm text-text-sub dark:text-gray-400">No spending data</p>
+                                            <p className="text-xs text-text-sub dark:text-gray-500 mt-1">Make transactions to see analytics</p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -382,8 +597,8 @@ export default function DashboardPage() {
                                                     <span className="material-symbols-outlined text-xl">{tx.direction === 'IN' ? 'arrow_downward' : 'arrow_upward'}</span>
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium text-text-main dark:text-white">{tx.category || 'General'}</p>
-                                                    <p className="text-xs text-text-sub dark:text-gray-400">{new Date(tx.date).toLocaleDateString()}</p>
+                                                    <p className="text-sm font-medium text-text-main dark:text-white">{tx.partnerName || tx.type || 'Transfer'}</p>
+                                                    <p className="text-xs text-text-sub dark:text-gray-400">{new Date(tx.createdAt).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
                                             <p className={`text-sm font-semibold ${tx.direction === 'IN' ? 'text-green-500' : 'text-red-500'}`}>
@@ -436,21 +651,105 @@ export default function DashboardPage() {
                                 <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
                                     {contacts.length > 0 ? contacts.map((contact, i) => (
                                         <div
-                                            key={contact.id || i}
-                                            className="flex flex-col items-center gap-2 cursor-pointer group min-w-[60px]"
+                                            key={contact.userId || contact.id || i}
+                                            className="flex flex-col items-center gap-2 cursor-pointer group min-w-[70px]"
                                             onClick={() => setSelectedContact(contact)}
                                         >
-                                            <div
-                                                className={`size-14 rounded-full bg-cover bg-center border-2 transition-all ${selectedContact?.id === contact.id ? 'border-primary ring-2 ring-primary/30' : 'border-transparent group-hover:border-primary'}`}
-                                                style={{ backgroundImage: `url("${contact.avatarUrl || 'https://via.placeholder.com/100'}")` }}
-                                            ></div>
-                                            <p className={`text-xs transition-colors truncate w-full text-center ${selectedContact?.id === contact.id ? 'text-primary font-medium' : 'text-text-sub dark:text-gray-400 group-hover:text-primary'}`}>{contact.name}</p>
+
+                                            {/* Phone number if available */}
+                                            {contact.phone && (
+                                                <p className="text-[10px] text-text-sub dark:text-gray-500 truncate w-full text-center">
+                                                    {contact.phone}
+                                                </p>
+                                            )}
                                         </div>
                                     )) : (
-                                        <p className="text-sm text-text-sub">No contacts</p>
+                                        <div className="w-full text-center py-4"></div>
                                     )}
                                 </div>
                                 <div className="space-y-3">
+                                    {/* Phone Search */}
+                                    <div>
+                                        <label className="text-sm text-text-sub dark:text-gray-400 mb-2 block">Search by Phone Number</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="tel"
+                                                value={phoneSearch}
+                                                onChange={(e) => setPhoneSearch(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && handlePhoneSearch()}
+                                                placeholder="Enter phone number"
+                                                className="flex-1 px-4 py-3 rounded-lg border border-gray-200 dark:border-[#2a3c32] bg-gray-50 dark:bg-[#25382e] text-text-main dark:text-white outline-none focus:ring-2 focus:ring-primary/50"
+                                            />
+                                            <button
+                                                onClick={handlePhoneSearch}
+                                                disabled={searching || !phoneSearch}
+                                                className="px-4 py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-text-main font-medium rounded-lg transition-all"
+                                            >
+                                                {searching ? (
+                                                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                                ) : (
+                                                    <span className="material-symbols-outlined">search</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Search Results */}
+                                    {searchResults.length > 0 && (
+                                        <div className="bg-gray-50 dark:bg-[#25382e] rounded-lg p-3 border border-gray-200 dark:border-[#2a3c32]">
+                                            <p className="text-xs text-text-sub dark:text-gray-400 mb-2">Search Results:</p>
+                                            <div className="space-y-2">
+                                                {searchResults.map((result) => (
+                                                    <div
+                                                        key={result.walletId}
+                                                        onClick={() => {
+                                                            setSelectedContact({
+                                                                userId: result.userId,
+                                                                walletId: result.walletId,
+                                                                fullName: result.fullName,
+                                                                name: result.fullName,
+                                                                phone: result.accountNumber
+                                                            });
+                                                            setSearchResults([]);
+                                                        }}
+                                                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedContact?.userId === result.userId
+                                                            ? 'bg-primary/20 border-2 border-primary'
+                                                            : 'bg-white dark:bg-[#1a2c22] hover:bg-gray-100 dark:hover:bg-[#2a3c32] border border-gray-200 dark:border-[#3a4c42]'
+                                                            }`}
+                                                    >
+                                                        <div className="size-10 rounded-full bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-text-main font-bold">
+                                                            {result.fullName[0].toUpperCase()}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-medium text-text-main dark:text-white">{result.fullName}</p>
+                                                            <p className="text-xs text-text-sub dark:text-gray-400">{result.accountNumber}</p>
+                                                        </div>
+                                                        {selectedContact?.userId === result.userId && (
+                                                            <span className="material-symbols-outlined text-primary">check_circle</span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Selected Contact Display */}
+                                    {selectedContact && selectedContact.userId && (
+                                        <div className="bg-primary/10 border-2 border-primary rounded-lg p-3">
+                                            <p className="text-xs text-text-sub dark:text-gray-400 mb-1">Sending to:</p>
+                                            <div className="flex items-center gap-2">
+                                                <div className="size-8 rounded-full bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-text-main font-bold text-sm">
+                                                    {(selectedContact.fullName || selectedContact.name)[0].toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-text-main dark:text-white">{selectedContact.fullName || selectedContact.name}</p>
+                                                    {selectedContact.phone && (
+                                                        <p className="text-xs text-text-sub dark:text-gray-400">{selectedContact.phone}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div>
                                         <label className="text-sm text-text-sub dark:text-gray-400 mb-2 block">Amount</label>
                                         <div className="flex items-center gap-2 bg-gray-50 dark:bg-[#25382e] rounded-lg px-4 py-3 border border-gray-200 dark:border-[#2a3c32]">

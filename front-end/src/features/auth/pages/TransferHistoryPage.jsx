@@ -432,7 +432,7 @@ export default function TransferHistoryPage() {
                                             account_balance_wallet
                                         </span>
                                         <span className="text-black font-medium">
-                                            Balance: ${wallet?.balance?.toLocaleString() ?? "—"}
+                                            Balance: ${wallet?.availableBalance?.toLocaleString() ?? wallet?.balance?.toLocaleString() ?? "—"}
                                         </span>
                                     </p>
                                 </div>
