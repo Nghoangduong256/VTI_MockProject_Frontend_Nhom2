@@ -29,7 +29,6 @@ export default function TransferHistoryPage() {
     const [timeRange, setTimeRange] = useState("30DAYS");
     const [page, setPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
-    const [loadedFromCache, setLoadedFromCache] = useState(false);
 
 
     /* SEND MONEY */
@@ -73,15 +72,18 @@ export default function TransferHistoryPage() {
 
             const res = await TransferService.getTransferHistory(walletId, params);
 
-            setTransactions(res.content || []);
-            setTotalElements(res.totalElements || 0);
+            const content = res?.content ?? [];
+            const total = res?.totalElements ?? 0;
+
+            setTransactions(content);
+            setTotalElements(total);
 
             localStorage.setItem(
                 HISTORY_CACHE_KEY,
                 JSON.stringify({
                     walletId,
-                    content: res.content || [],
-                    totalElements: res.totalElements || 0,
+                    content,
+                    totalElements: total,
                     page,
                     direction,
                     timeRange,
@@ -91,15 +93,22 @@ export default function TransferHistoryPage() {
 
         } catch (e) {
             console.error("Fetch history failed", e);
+            // Clear cache and state if API fails (e.g. 404 for new user)
+            setTransactions([]);
+            setTotalElements(0);
+            localStorage.removeItem(HISTORY_CACHE_KEY);
         }
     };
 
     const refreshWallet = async () => {
-        const walletData = await walletService.getWalletInfo();
-        setWallet({
-            ...walletData,
-            id: walletData.walletId,
-        });
+        try {
+            const user = await userService.getCurrentUser();
+            if (user && user.wallet) {
+                setWallet(user.wallet);
+            }
+        } catch (error) {
+            console.error("Failed to load wallet info", error);
+        }
     };
 
 
@@ -111,13 +120,12 @@ export default function TransferHistoryPage() {
 
         try {
             const data = JSON.parse(cached);
-            if (data.walletId === walletId && data.content?.length) {
-                setTransactions(data.content);
-                setTotalElements(data.totalElements || 0);
+            if (data.walletId === walletId) {
+                setTransactions(data.content ?? []);
+                setTotalElements(data.totalElements ?? 0);
                 setPage(data.page ?? 0);
                 setDirection(data.direction ?? "ALL");
                 setTimeRange(data.timeRange ?? "30DAYS");
-                setLoadedFromCache(true);
             }
         } catch (e) {
             console.error("Cache parse failed", e);
@@ -125,13 +133,9 @@ export default function TransferHistoryPage() {
     }, [walletId]);
 
     useEffect(() => {
-        setLoadedFromCache(false);
-    }, [page, direction, timeRange]);
-
-    useEffect(() => {
-        if (!walletId || loadedFromCache) return;
+        if (!walletId) return;
         fetchHistory(walletId, page, direction, timeRange);
-    }, [walletId, page, direction, timeRange, loadedFromCache]);
+    }, [walletId, page, direction, timeRange]);
 
     useEffect(() => {
         if (!walletId || sending) return;
